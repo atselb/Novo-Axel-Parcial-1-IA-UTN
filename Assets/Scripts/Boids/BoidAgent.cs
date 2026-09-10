@@ -8,6 +8,7 @@ public class BoidAgent : MonoBehaviour
 
     [Header("Perception")]
     [SerializeField] private float perceptionRadius = 8f;
+    [SerializeField] private float separationRadius = 3f;
 
     [Header("Agent")]
     [SerializeField] private float health = 100f;
@@ -18,6 +19,7 @@ public class BoidAgent : MonoBehaviour
     public float MaxSpeed => maxSpeed;
     public float MaxAcceleration => maxAcceleration;
     public float PerceptionRadius => perceptionRadius;
+    public float SeparationRadius => separationRadius;
     public float Health => health;
     public Vector3 CurrentVelocity => currentVelocity;
     public bool IsActive => isActive;
