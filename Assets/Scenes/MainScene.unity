@@ -132,6 +132,7 @@ GameObject:
   - component: {fileID: 43830574}
   - component: {fileID: 43830573}
   - component: {fileID: 43830576}
+  - component: {fileID: 43830577}
   m_Layer: 0
   m_Name: Boid
   m_TagString: Untagged
@@ -247,8 +248,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   maxSpeed: 5
+  maxAcceleration: 10
   perceptionRadius: 8
   health: 100
+--- !u!114 &43830577
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 43830571}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f850dd3b17bc0b742ba9b5d1e7e98c1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TestSteering
+  agent: {fileID: 43830576}
 --- !u!1 &130625305
 GameObject:
   m_ObjectHideFlags: 0
