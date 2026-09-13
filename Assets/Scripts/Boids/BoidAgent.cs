@@ -56,4 +56,12 @@ public class BoidAgent : MonoBehaviour
     {
         currentVelocity = velocity;
     }
+
+    private void OnValidate()
+    {
+        separationRadius = Mathf.Min(separationRadius, perceptionRadius);
+
+        maxSpeed = Mathf.Max(0f, maxSpeed);
+        maxAcceleration = Mathf.Max(0f, maxAcceleration);
+    }
 }
