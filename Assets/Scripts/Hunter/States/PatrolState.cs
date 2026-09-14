@@ -3,15 +3,23 @@ using UnityEngine;
 public class PatrolState : HunterState
 {
     private int currentWaypointIndex;
+    private float interestSpawnTimer;
     
     public PatrolState(HunterAgent hunter) : base(hunter) { }
 
     public override void Enter()
     {
         Debug.Log("Hunter entered Patrol state.");
+        interestSpawnTimer = 0f;
     }
 
     public override void Update()
+    {
+        UpdatePatrol();
+        UpdateInterestObjectSpawn();
+    }
+
+    private void UpdatePatrol()
     {
         Transform[] waypoints = hunter.Waypoints;
 
@@ -32,6 +40,19 @@ public class PatrolState : HunterState
                 currentWaypointIndex = 0;
             }
         }
+    }
+
+    private void UpdateInterestObjectSpawn()
+    {
+        interestSpawnTimer += Time.deltaTime;
+
+        if (interestSpawnTimer < hunter.InterestSpawnInterval) return;
+
+        interestSpawnTimer = 0f;
+
+        if (hunter.GetActiveInterestObjectCount() >= hunter.MaxActiveInterestObjects) return;
+
+        hunter.SpawnInterestObject();
     }
 
     public override void Exit()

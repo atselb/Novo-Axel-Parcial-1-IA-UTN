@@ -18,6 +18,12 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private Transform[] waypoints;
     [SerializeField] private float waypointReachDistance = 0.5f;
 
+    [Header("Interest Objects")]
+    [SerializeField] private InterestObject interestObjectPrefab;
+    [SerializeField] private float interestSpawnInterval = 5f;
+    [SerializeField] private int maxActiveInterestObjects = 5;
+    [SerializeField] private float interestSpawnRadius = 10f;
+
     private HunterState currentState;
 
     public float MaxSpeed => maxSpeed;
@@ -30,6 +36,11 @@ public class HunterAgent : MonoBehaviour
     public HunterState CurrentState => currentState;
     public Transform[] Waypoints => waypoints;
     public float WaypointReachDistance => waypointReachDistance;
+
+    public InterestObject InterestObjectPrefab => interestObjectPrefab;
+    public float InterestSpawnInterval => interestSpawnInterval;
+    public int MaxActiveInterestObjects => maxActiveInterestObjects;
+    public float InterestSpawnRadius => interestSpawnRadius;
 
     public PatrolState PatrolState { get; private set; }
     public AttackState AttackState { get; private set; }
@@ -97,7 +108,31 @@ public class HunterAgent : MonoBehaviour
         transform.forward = direction.normalized;
     }
 
+    public int GetActiveInterestObjectCount()
+    {
+        return FindObjectsByType<InterestObject>(
+            FindObjectsSortMode.None
+        ).Length;
+    }
 
+    public void SpawnInterestObject()
+    {
+        if (interestObjectPrefab == null) return;
+
+        Vector2 randomCircle = Random.insideUnitCircle * interestSpawnRadius;
+
+        Vector3 spawnPosition = new Vector3(
+            transform.position.x + randomCircle.x,
+            1f,
+            transform.position.z + randomCircle.y
+        );
+
+        Instantiate(
+            interestObjectPrefab,
+            spawnPosition,
+            Quaternion.identity
+        );
+    }
 
 
 
