@@ -454,6 +454,7 @@ GameObject:
   - component: {fileID: 475078484}
   - component: {fileID: 475078483}
   - component: {fileID: 475078482}
+  - component: {fileID: 475078485}
   m_Layer: 0
   m_Name: Hunter
   m_TagString: Untagged
@@ -556,6 +557,23 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 475078480}
   m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &475078485
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 475078480}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8eaf2e16d56db324087bc698901e2aa3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HunterAgent
+  maxSpeed: 4
+  perceptionRadius: 12
+  tba: 3
+  rangeAttackRadius: 8
+  meleeAttackRadius: 2
 --- !u!4 &501186942 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
