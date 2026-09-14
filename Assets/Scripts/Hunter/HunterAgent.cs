@@ -14,6 +14,10 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float rangeAttackRadius = 8f;
     [SerializeField] private float meleeAttackRadius = 2f;
 
+    [Header("Patrol")]
+    [SerializeField] private Transform[] waypoints;
+    [SerializeField] private float waypointReachDistance = 0.5f;
+
     private HunterState currentState;
 
     public float MaxSpeed => maxSpeed;
@@ -24,6 +28,8 @@ public class HunterAgent : MonoBehaviour
     public float MeleeAttackRadius => meleeAttackRadius;
 
     public HunterState CurrentState => currentState;
+    public Transform[] Waypoints => waypoints;
+    public float WaypointReachDistance => waypointReachDistance;
 
     public PatrolState PatrolState { get; private set; }
     public AttackState AttackState { get; private set; }
@@ -76,6 +82,24 @@ public class HunterAgent : MonoBehaviour
 
         currentState.Enter();
     }
+
+    public void MoveTowards(Vector3 targetPosition)
+    {
+        Vector3 direction = targetPosition - transform.position;
+
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude <= 0.001f) return;
+        
+        Vector3 velocity = direction.normalized * maxSpeed;
+
+        transform.position += velocity * Time.deltaTime;
+        transform.forward = direction.normalized;
+    }
+
+
+
+
 
     private void OnValidate()
     {
