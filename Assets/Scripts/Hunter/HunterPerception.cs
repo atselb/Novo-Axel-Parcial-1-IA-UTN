@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 
 public class HunterPerception : MonoBehaviour
@@ -13,17 +11,17 @@ public class HunterPerception : MonoBehaviour
     public IReadOnlyList<BoidAgent> PerceivedAliveBoids => perceivedAliveBoids;
     public IReadOnlyList<BoidAgent> PerceivedEliminatedBoids => perceivedEliminatedBoids;
     
-    public bool HasaliveBoids => perceivedAliveBoids.Count > 0;
-    public bool HaseliminatedBoids => perceivedEliminatedBoids.Count > 0;
+    public bool HasAliveBoids => perceivedAliveBoids.Count > 0;
+    public bool HasEliminatedBoids => perceivedEliminatedBoids.Count > 0;
 
     private void Update()
     {
         DetectBoids();
 
-        Debug.Log(
-            $"Alive: {perceivedAliveBoids.Count} | " +
-            $"Eliminated: {perceivedEliminatedBoids.Count}"
-        );
+        // Debug.Log(
+        //     $"Alive: {perceivedAliveBoids.Count} | " +
+        //     $"Eliminated: {perceivedEliminatedBoids.Count}"
+        // );
     }
 
     private void DetectBoids()
@@ -51,7 +49,7 @@ public class HunterPerception : MonoBehaviour
             }
             else
             {
-                if (!PerceivedEliminatedBoids.Contains(boid))
+                if (!perceivedEliminatedBoids.Contains(boid))
                 {
                     perceivedEliminatedBoids.Add(boid);
                 }
@@ -70,7 +68,7 @@ public class HunterPerception : MonoBehaviour
 
             float distanceSqr = (boid.transform.position - transform.position).sqrMagnitude;
 
-            if (distanceSqr > closestDistanceSqr)
+            if (distanceSqr < closestDistanceSqr)
             {
                 closestDistanceSqr = distanceSqr;
                 closest = boid;

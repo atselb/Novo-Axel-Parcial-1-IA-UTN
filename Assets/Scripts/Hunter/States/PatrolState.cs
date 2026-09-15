@@ -15,6 +15,7 @@ public class PatrolState : HunterState
 
     public override void Update()
     {
+        if (TryEnterAttack()) return;
         UpdatePatrol();
         UpdateInterestObjectSpawn();
     }
@@ -53,6 +54,22 @@ public class PatrolState : HunterState
         if (hunter.GetActiveInterestObjectCount() >= hunter.MaxActiveInterestObjects) return;
 
         hunter.SpawnInterestObject();
+    }
+
+    private bool TryEnterAttack()
+    {
+        if (!hunter.IsAttackReady) return false;
+
+        if (!hunter.Perception.HasAliveBoids) return false;
+
+        BoidAgent target = hunter.Perception.GetClosestAliveBoid();
+
+        if (target == null) return false;
+
+        hunter.SetTarget(target);
+        hunter.ChangeState(hunter.AttackState);
+
+        return true;
     }
 
     public override void Exit()
