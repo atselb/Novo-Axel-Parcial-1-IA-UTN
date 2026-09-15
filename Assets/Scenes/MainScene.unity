@@ -647,9 +647,13 @@ MonoBehaviour:
   gatherRadius: 1.5
   gatherDuration: 2
   interestObjectPrefab: {fileID: 5185650803716884977, guid: 095b1fceaa9865c478644a5d8397afed, type: 3}
-  interestSpawnInterval: 3
+  interestSpawnInterval: 7
   maxActiveInterestObjects: 7
-  interestSpawnRadius: 5
+  interestSpawnRadius: 10
+  arenaXBounds: {x: -24, y: 24}
+  arenaZBounds: {x: -24, y: 24}
+  interestSpawnHeight: 1
+  maxSpawnAttempts: 10
 --- !u!114 &475078486
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -705,7 +709,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.3
+      value: -16.08
       objectReference: {fileID: 0}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.y
@@ -713,7 +717,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 14.3
+      value: 18.39
       objectReference: {fileID: 0}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalRotation.w
