@@ -23,6 +23,10 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private Transform[] waypoints;
     [SerializeField] private float waypointReachDistance = 0.5f;
 
+    [Header("Gather")]
+    [SerializeField] private float gatherRadius = 1.5f;
+    [SerializeField] private float gatherDuration = 2f;
+
     [Header("Interest Objects")]
     [SerializeField] private InterestObject interestObjectPrefab;
     [SerializeField] private float interestSpawnInterval = 5f;
@@ -57,6 +61,9 @@ public class HunterAgent : MonoBehaviour
     public float AttackCooldownTimer => attackCooldownTimer;
     public bool IsAttackReady => attackCooldownTimer >= tba;
     public BoidAgent CurrentTarget => currentTarget;
+
+    public float GatherRadius => gatherRadius;
+    public float GatherDuration => gatherDuration;
 
     public PatrolState PatrolState { get; private set; }
     public AttackState AttackState { get; private set; }
