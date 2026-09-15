@@ -26,6 +26,9 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float interestSpawnRadius = 10f;
 
     private HunterState currentState;
+    private float attackCooldownTimer;
+
+    private BoidAgent currentTarget;
 
     public float MaxSpeed => maxSpeed;
     public float PerceptionRadius => perceptionRadius;
@@ -44,6 +47,10 @@ public class HunterAgent : MonoBehaviour
     public int MaxActiveInterestObjects => maxActiveInterestObjects;
     public float InterestSpawnRadius => interestSpawnRadius;
 
+    public float AttackCooldownTimer => attackCooldownTimer;
+    public bool IsAttackReady => attackCooldownTimer >= tba;
+    public BoidAgent CurrentTarget => currentTarget;
+
     public PatrolState PatrolState { get; private set; }
     public AttackState AttackState { get; private set; }
     public GatherState GatherState { get; private set; }
@@ -58,10 +65,14 @@ public class HunterAgent : MonoBehaviour
         PatrolState = new PatrolState(this);
         AttackState = new AttackState(this);
         GatherState = new GatherState(this);
+
+        attackCooldownTimer = tba;
     }
 
     private void Update()
-    {
+    {   
+        UpdateAttackCooldown();
+
         currentState?.Update();
 
         // Debugging state changes using keyboard input (commented out)
@@ -134,6 +145,29 @@ public class HunterAgent : MonoBehaviour
             spawnPosition,
             Quaternion.identity
         );
+    }
+
+    private void UpdateAttackCooldown()
+    {
+        if (attackCooldownTimer < tba)
+        {
+            attackCooldownTimer += Time.deltaTime;
+        }
+    }
+
+    public void ResetAttackCooldown()
+    {
+        attackCooldownTimer = 0f;
+    }
+
+    public void SetTarget(BoidAgent target)
+    {
+        currentTarget = target;
+    }
+
+    public void ClearTarget()
+    {
+        currentTarget = null;
     }
 
 
