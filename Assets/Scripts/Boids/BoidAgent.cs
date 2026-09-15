@@ -13,7 +13,6 @@ public class BoidAgent : MonoBehaviour
     [Header("Agent")]
     [SerializeField] private float health = 100f;
 
-
     [Header("Interest Interaction")]
     [SerializeField] private float interactionRadius = 1f;
     [SerializeField] private float interestDamage = 10f;
@@ -53,6 +52,8 @@ public class BoidAgent : MonoBehaviour
 
     private void Move()
     {
+        if (!isActive) return;
+
         transform.position += currentVelocity * Time.deltaTime;
 
         if (CurrentVelocity.sqrMagnitude > 0.001f)
@@ -64,6 +65,24 @@ public class BoidAgent : MonoBehaviour
     public void SetVelocity(Vector3 velocity)
     {
         currentVelocity = velocity;
+    }
+
+    public void TakeDamage(float amount)
+    {
+        if (!isActive) return;
+
+        health -= amount;
+        health = Mathf.Max(0f, health);
+
+        if (health <= 0f) Die();
+    }
+
+    private void Die()
+    {
+        isActive = false;
+        currentVelocity = Vector3.zero;
+
+        Debug.Log($"{name} was eliminated.");
     }
 
     private void OnValidate()

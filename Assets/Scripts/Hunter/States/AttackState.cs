@@ -61,6 +61,8 @@ public class AttackState : HunterState
 
     private void PerformMeleeAttack(BoidAgent target)
     {
+        target.TakeDamage(hunter.MeleeDamage);
+
         Debug.Log($"Hunter performs melee attakc on {target.name}");
 
         hunter.RegisterSuccessfulAttack();
@@ -69,6 +71,8 @@ public class AttackState : HunterState
 
     private void PerformRangeAttack(BoidAgent target)
     {
+        target.TakeDamage(hunter.RangeDamage);
+
         Debug.Log($"Hunter performs ranged attack on {target.name}");
 
         hunter.RegisterSuccessfulAttack();

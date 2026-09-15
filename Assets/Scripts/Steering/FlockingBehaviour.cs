@@ -20,6 +20,8 @@ public class FlockingBehaviour : MonoBehaviour
 
     private void Update()
     {
+        if (!agent.IsActive) return;
+
         Vector3 desiredVelocity = CalculateFlocking();
 
         agent.ApplySteering(desiredVelocity);

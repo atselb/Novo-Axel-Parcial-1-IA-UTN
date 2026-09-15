@@ -15,6 +15,10 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float rangeAttackRadius = 8f;
     [SerializeField] private float meleeAttackRadius = 2f;
 
+    [Header("Damage")]
+    [SerializeField] private float meleeDamage = 50f;
+    [SerializeField] private float rangeDamage = 25f;
+
     [Header("Patrol")]
     [SerializeField] private Transform[] waypoints;
     [SerializeField] private float waypointReachDistance = 0.5f;
@@ -37,6 +41,9 @@ public class HunterAgent : MonoBehaviour
     public float TBA => tba;
     public float RangeAttackRadius => rangeAttackRadius;
     public float MeleeAttackRadius => meleeAttackRadius;
+
+    public float MeleeDamage => meleeDamage;
+    public float RangeDamage => rangeDamage;
 
     public HunterState CurrentState => currentState;
     public Transform[] Waypoints => waypoints;
