@@ -79,6 +79,30 @@ public class BoidPerception : MonoBehaviour
         perceivedInterestObjects.Add(interestObject);
     }
 
+    public InterestObject GetClosestInterestObject()
+    {
+        InterestObject closest = null;
+        float closestDistance = float.MaxValue;
+
+        foreach (InterestObject interestObject in perceivedInterestObjects)
+        {
+            if (interestObject == null) continue;
+
+            float distance = Vector3.SqrMagnitude(interestObject.transform.position - transform.position);
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closest = interestObject;
+            }
+        }
+
+        return closest;
+    }
+
+
+
+
     private void OnDrawGizmosSelected()
     {
         if (agent == null)
