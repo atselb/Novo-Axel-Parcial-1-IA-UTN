@@ -8,6 +8,7 @@ public class HunterAgent : MonoBehaviour
 
     [Header("Perception")]
     [SerializeField] private float perceptionRadius = 12f;
+    [SerializeField] private HunterPerception perception;
 
     [Header("Attack")]
     [SerializeField] private float tba = 3f;
@@ -28,6 +29,7 @@ public class HunterAgent : MonoBehaviour
 
     public float MaxSpeed => maxSpeed;
     public float PerceptionRadius => perceptionRadius;
+    public HunterPerception Perception => perception;
 
     public float TBA => tba;
     public float RangeAttackRadius => rangeAttackRadius;
