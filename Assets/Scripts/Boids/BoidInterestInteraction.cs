@@ -10,6 +10,8 @@ public class BoidInterestInteraction : MonoBehaviour
 
     private void Update()
     {
+        if (!agent.IsActive) return;
+        
         UpdateTarget();
         UpdateInteraction();
     }
