@@ -138,40 +138,4 @@ public class BoidPerception : MonoBehaviour
             agent.SeparationRadius
         );
     }
-
-
-
-
-    // DEPRECATED: This method is no longer used, but kept for reference.
-        private void DetectNeighbors()
-    {
-        perceivedNeighbors.Clear();
-        separationNeighbors.Clear();
-
-        Collider[] hits = Physics.OverlapSphere(
-            transform.position,
-            agent.PerceptionRadius
-        );
-
-        foreach (Collider hit in hits)
-        {
-            BoidAgent otherAgent = hit.GetComponent<BoidAgent>();
-
-            if (otherAgent == null) continue;
-            if (otherAgent == agent) continue;
-            if (!otherAgent.IsActive) continue;
-
-            float distance = Vector3.Distance(
-                transform.position,
-                otherAgent.transform.position
-            );
-
-            perceivedNeighbors.Add(otherAgent);
-
-            if (distance <= agent.SeparationRadius)
-            {
-                separationNeighbors.Add(otherAgent);
-            }
-        }
-    }
 }
