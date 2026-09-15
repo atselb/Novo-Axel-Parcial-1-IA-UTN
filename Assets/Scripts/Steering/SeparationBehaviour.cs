@@ -25,11 +25,6 @@ public class SeparationBehaviour : MonoBehaviour
 
         separation /= perception.SeparationNeighbors.Count;
 
-        if (separation.sqrMagnitude > 0f)
-        {
-            separation = separation.normalized * agent.MaxSpeed;
-        }
-
-        return separation;
+        return Vector3.ClampMagnitude(separation, agent.MaxSpeed);
     }
 }

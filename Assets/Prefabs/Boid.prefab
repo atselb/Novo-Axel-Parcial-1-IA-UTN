@@ -19,6 +19,7 @@ GameObject:
   - component: {fileID: 5017167771929934193}
   - component: {fileID: 5869864741000830040}
   - component: {fileID: 2262121714630769335}
+  - component: {fileID: 242649333336741779}
   m_Layer: 0
   m_Name: Boid
   m_TagString: Untagged
@@ -138,6 +139,9 @@ MonoBehaviour:
   perceptionRadius: 8
   separationRadius: 3
   health: 100
+  interactionRadius: 1
+  interestDamage: 10
+  interestDamageInterval: 1
 --- !u!114 &5076944722172835184
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,3 +234,17 @@ MonoBehaviour:
   alignmentWeight: 1
   cohesionWeight: 1
   arriveWeight: 1.5
+--- !u!114 &242649333336741779
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 435135486191882565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e90853a6bb4209e47a5d5a7963d23850, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoidInterestInteraction
+  agent: {fileID: 469644550898942529}
+  perception: {fileID: 5076944722172835184}

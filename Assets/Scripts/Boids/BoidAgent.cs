@@ -13,6 +13,12 @@ public class BoidAgent : MonoBehaviour
     [Header("Agent")]
     [SerializeField] private float health = 100f;
 
+
+    [Header("Interest Interaction")]
+    [SerializeField] private float interactionRadius = 1f;
+    [SerializeField] private float interestDamage = 10f;
+    [SerializeField] private float interestDamageInterval = 1f;
+
     private Vector3 currentVelocity;
     private bool isActive = true;
 
@@ -23,6 +29,9 @@ public class BoidAgent : MonoBehaviour
     public float Health => health;
     public Vector3 CurrentVelocity => currentVelocity;
     public bool IsActive => isActive;
+    public float InteractionRadius => interactionRadius;
+    public float InterestDamage => interestDamage;
+    public float InterestDamageInterval => interestDamageInterval;
 
     public void ApplySteering(Vector3 desiredVelocity)
     {

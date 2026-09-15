@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class InterestObject : MonoBehaviour
@@ -7,6 +8,7 @@ public class InterestObject : MonoBehaviour
     private float currentHealth;
 
     public float CurrentHealth => currentHealth;
+    public float MaxHealth => maxHealth;
     public bool IsDestroyed => currentHealth <= 0f;
 
     private void Awake()
@@ -16,7 +18,10 @@ public class InterestObject : MonoBehaviour
 
     public void TakeDamage(float amount)
     {
+        if (IsDestroyed) return;
+
         currentHealth -= amount;
+        currentHealth = Mathf.Max(0f, currentHealth);
 
         if (currentHealth <= 0f)
         {

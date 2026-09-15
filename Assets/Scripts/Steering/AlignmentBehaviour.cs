@@ -19,10 +19,7 @@ public class AlignmentBehaviour : MonoBehaviour
 
         averageVelocity /= perception.PerceivedNeighbors.Count;
 
-        if (averageVelocity.sqrMagnitude > 0f)
-        {
-            averageVelocity = averageVelocity.normalized * agent.MaxSpeed;
-        }
+        averageVelocity = Vector3.ClampMagnitude(averageVelocity, agent.MaxSpeed);
 
         return averageVelocity;
     }
