@@ -32,6 +32,8 @@ public class BoidAgent : MonoBehaviour
     public float InterestDamage => interestDamage;
     public float InterestDamageInterval => interestDamageInterval;
 
+    public bool IsCollected {get; private set;}
+
     public void ApplySteering(Vector3 desiredVelocity)
     {
         if (!isActive) return;
@@ -83,6 +85,14 @@ public class BoidAgent : MonoBehaviour
         currentVelocity = Vector3.zero;
 
         Debug.Log($"{name} was eliminated.");
+    }
+
+    public void Collect()
+    {
+        if (isActive) return;
+
+        IsCollected = true;
+        gameObject.SetActive(false);
     }
 
     private void OnValidate()
