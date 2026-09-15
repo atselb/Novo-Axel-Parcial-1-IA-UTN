@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class BoidAgent : MonoBehaviour
@@ -11,12 +12,18 @@ public class BoidAgent : MonoBehaviour
     [SerializeField] private float separationRadius = 3f;
 
     [Header("Agent")]
-    [SerializeField] private float health = 100f;
+    [SerializeField] private float maxHealth = 100f;
+    private float currentHealth;
 
     [Header("Interest Interaction")]
     [SerializeField] private float interactionRadius = 1f;
     [SerializeField] private float interestDamage = 10f;
     [SerializeField] private float interestDamageInterval = 1f;
+
+    [Header("Respawn")]
+    [SerializeField] private float respawnDelay = 5f;
+    [SerializeField] private Vector2 respawnXRange = new Vector2(-20f, 20f);
+    [SerializeField] private Vector2 respawnZRange = new Vector2(-20f, 20f);
 
     private Vector3 currentVelocity;
     private bool isActive = true;
@@ -25,14 +32,21 @@ public class BoidAgent : MonoBehaviour
     public float MaxAcceleration => maxAcceleration;
     public float PerceptionRadius => perceptionRadius;
     public float SeparationRadius => separationRadius;
-    public float Health => health;
+    public float MaxHealth => maxHealth;
+    public float Health => currentHealth;
     public Vector3 CurrentVelocity => currentVelocity;
     public bool IsActive => isActive;
     public float InteractionRadius => interactionRadius;
     public float InterestDamage => interestDamage;
     public float InterestDamageInterval => interestDamageInterval;
+    public float RespawnDelay => respawnDelay;
 
     public bool IsCollected {get; private set;}
+
+    private void Awake()
+    {
+        currentHealth = maxHealth;
+    }
 
     public void ApplySteering(Vector3 desiredVelocity)
     {
@@ -73,10 +87,10 @@ public class BoidAgent : MonoBehaviour
     {
         if (!isActive) return;
 
-        health -= amount;
-        health = Mathf.Max(0f, health);
+        currentHealth -= amount;
+        currentHealth = Mathf.Max(0f, currentHealth);
 
-        if (health <= 0f) Die();
+        if (currentHealth <= 0f) Die();
     }
 
     private void Die()
@@ -91,8 +105,56 @@ public class BoidAgent : MonoBehaviour
     {
         if (isActive) return;
 
+        if (IsCollected) return;
+
         IsCollected = true;
-        gameObject.SetActive(false);
+        
+        StartCoroutine(RespawnRoutine());
+    }
+
+    private IEnumerator RespawnRoutine()
+    {
+        SetVisualsActive(false);
+
+        yield return new WaitForSeconds(respawnDelay);
+
+        Respawn();
+    }
+
+    private void SetVisualsActive(bool value)
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            renderer.enabled = value;
+        }
+
+        Collider[] colliders = GetComponentsInChildren<Collider>();
+
+        foreach (Collider collider in colliders)
+        {
+            collider.enabled = value;
+        }
+    }
+
+    private void Respawn()
+    {
+        Vector3 randomPosition = new Vector3(
+            Random.Range(respawnXRange.x, respawnXRange.y),
+            transform.position.y,
+            Random.Range(respawnZRange.x, respawnZRange.y)
+        );
+
+        transform.position = randomPosition;
+
+        currentHealth = maxHealth;
+        currentVelocity = Vector3.zero;
+
+        isActive = true;
+        IsCollected = false;
+
+        SetVisualsActive(true);
     }
 
     private void OnValidate()
