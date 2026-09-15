@@ -21,11 +21,6 @@ public class CohesionBehaviour : MonoBehaviour
 
         Vector3 directionToCenter = centerOfMass - transform.position;
 
-        if (directionToCenter.sqrMagnitude > 0f)
-        {
-            directionToCenter = directionToCenter.normalized * agent.MaxSpeed;
-        }
-
-        return directionToCenter;
+        return Vector3.ClampMagnitude(directionToCenter, agent.MaxSpeed);
     }
 }
