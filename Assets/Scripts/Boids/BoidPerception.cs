@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class BoidPerception : MonoBehaviour
 {
     [SerializeField] private BoidAgent agent;
+    private HunterAgent perceivedHunter;
 
     private readonly List<BoidAgent> perceivedNeighbors = new();
     private readonly List<BoidAgent> separationNeighbors = new();
@@ -16,6 +18,8 @@ public class BoidPerception : MonoBehaviour
     public int PerceivedCount => perceivedNeighbors.Count;
     public int SeparationCount => separationNeighbors.Count;
     public int InterestObjectCount => perceivedInterestObjects.Count;
+    public HunterAgent PerceivedHunter => perceivedHunter;
+    public bool HasHunterThreat => perceivedHunter != null;
 
     private void Update()
     {
@@ -35,6 +39,8 @@ public class BoidPerception : MonoBehaviour
         separationNeighbors.Clear();
         perceivedInterestObjects.Clear();
 
+        perceivedHunter = null;
+
         Collider[] hits = Physics.OverlapSphere(
             transform.position,
             agent.PerceptionRadius
@@ -44,6 +50,7 @@ public class BoidPerception : MonoBehaviour
         {
             DetectBoid(hit);
             DetectInterestObject(hit);
+            DetectHunter(hit);
         }
     }
 
@@ -77,6 +84,20 @@ public class BoidPerception : MonoBehaviour
         if (interestObject.IsDestroyed) return;
 
         perceivedInterestObjects.Add(interestObject);
+    }
+
+    private void DetectHunter(Collider hit)
+    {
+        HunterAgent hunter = hit.GetComponent<HunterAgent>();
+
+        if (hunter == null) return;
+
+        perceivedHunter = hunter;
+
+        if (perceivedHunter != null)
+        {
+            Debug.Log($"{name} detected the Hunter");
+        }
     }
 
     public InterestObject GetClosestInterestObject()
