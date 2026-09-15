@@ -27,6 +27,12 @@ public class BoidInterestInteraction : MonoBehaviour
 
     private void UpdateInteraction()
     {
+        if (perception.HasHunterThreat)
+        {
+            damageTimer = 0f;
+            return;
+        }
+
         if (currentTarget == null) return;
 
         float distance = Vector3.Distance(transform.position, currentTarget.transform.position);
