@@ -170,7 +170,10 @@ public class HunterAgent : MonoBehaviour
         currentTarget = null;
     }
 
-
+    public void RegisterSuccessfulAttack()
+    {
+        ResetAttackCooldown();
+    }
 
     private void OnValidate()
     {
