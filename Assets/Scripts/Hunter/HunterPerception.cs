@@ -17,11 +17,6 @@ public class HunterPerception : MonoBehaviour
     private void Update()
     {
         DetectBoids();
-
-        // Debug.Log(
-        //     $"Alive: {perceivedAliveBoids.Count} | " +
-        //     $"Eliminated: {perceivedEliminatedBoids.Count}"
-        // );
     }
 
     private void DetectBoids()

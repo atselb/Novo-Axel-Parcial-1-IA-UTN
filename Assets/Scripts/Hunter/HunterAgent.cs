@@ -34,6 +34,12 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private int maxActiveInterestObjects = 5;
     [SerializeField] private float interestSpawnRadius = 10f;
 
+    [Header("Interest Object Spawn Bounds")]
+    [SerializeField] private Vector2 arenaXBounds = new Vector2(-24f, 24f);
+    [SerializeField] private Vector2 arenaZBounds = new Vector2(-24f, 24f);
+    [SerializeField] private float interestSpawnHeight = 1f;
+    [SerializeField] private int maxSpawnAttempts = 10;
+
     private HunterState currentState;
     private float attackCooldownTimer;
 
@@ -177,19 +183,37 @@ public class HunterAgent : MonoBehaviour
     {
         if (interestObjectPrefab == null) return;
 
-        Vector2 randomCircle = Random.insideUnitCircle * interestSpawnRadius;
+        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        {
+            Vector2 randomCircle = Random.insideUnitCircle * interestSpawnRadius;
 
-        Vector3 spawnPosition = new Vector3(
-            transform.position.x + randomCircle.x,
-            1f,
-            transform.position.z + randomCircle.y
-        );
+            Vector3 spawnPosition = new Vector3(
+                transform.position.x + randomCircle.x,
+                interestSpawnHeight,
+                transform.position.z + randomCircle.y
+            );
 
-        Instantiate(
-            interestObjectPrefab,
-            spawnPosition,
-            Quaternion.identity
-        );
+            if (!IsInsideArena(spawnPosition)) continue;
+
+            Instantiate(
+                interestObjectPrefab,
+                spawnPosition,
+                Quaternion.identity
+            );
+
+            return;
+        }
+
+        Debug.LogWarning("Hunter could not find a valid position to spawn a InterestObject.");
+    }
+
+    private bool IsInsideArena(Vector3 position)
+    {
+        return
+            position.x >= arenaXBounds.x &&
+            position.x <= arenaXBounds.y &&
+            position.z >= arenaZBounds.x &&
+            position.z <= arenaZBounds.y;
     }
 
     private void UpdateAttackCooldown()
@@ -227,6 +251,9 @@ public class HunterAgent : MonoBehaviour
         rotationSpeed = Mathf.Max(0f, rotationSpeed);
 
         perceptionRadius = Mathf.Max(0f, perceptionRadius);
+
+        maxSpawnAttempts = Mathf.Max(1, maxSpawnAttempts);
+        interestSpawnRadius = Mathf.Max(0f, interestSpawnRadius);
 
         tba = Mathf.Max(0f, tba);
         rangeAttackRadius = Mathf.Max(0f, rangeAttackRadius);

@@ -15,16 +15,24 @@ public class SeparationBehaviour : MonoBehaviour
         foreach (BoidAgent neighbor in perception.SeparationNeighbors)
         {
             Vector3 awayFromNeighbor = transform.position - neighbor.transform.position;
+
+            awayFromNeighbor.y = 0f;
+
             float distance = awayFromNeighbor.magnitude;
+            
+            if (distance <= 0.001f) continue;
 
-            if (distance > 0f)
-            {
-                separation += awayFromNeighbor.normalized / distance;
-            }
+            float strength = Mathf.Clamp01(
+                (agent.SeparationRadius - distance) /
+                agent.SeparationRadius
+            );
+
+            separation +=
+                awayFromNeighbor.normalized *
+                strength *
+                agent.MaxSpeed;
         }
-
-        separation /= perception.SeparationNeighbors.Count;
-
+        
         return Vector3.ClampMagnitude(separation, agent.MaxSpeed);
     }
 }

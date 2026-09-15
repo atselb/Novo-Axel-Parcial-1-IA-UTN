@@ -43,7 +43,7 @@ public class BoundaryAvoidanceBehaviour : MonoBehaviour
     private Vector3 GetMovementDirection()
     {
         Vector3 direction = 
-            agent.CurrentVelocity.sqrMagnitude > 0001f
+            agent.CurrentVelocity.sqrMagnitude > 0.001f
             ? agent.CurrentVelocity.normalized
             : transform.forward;
 
