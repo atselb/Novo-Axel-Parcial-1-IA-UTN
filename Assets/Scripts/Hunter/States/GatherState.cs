@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using UnityEngine;
 
 public class GatherState : HunterState
@@ -35,6 +34,7 @@ public class GatherState : HunterState
             return;
         }
 
+        hunter.StopMovement();
         UpdateGathering(target);
     }
 

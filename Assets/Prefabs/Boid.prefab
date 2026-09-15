@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 485996623472134300}
   - component: {fileID: 2262121714630769335}
   - component: {fileID: 242649333336741779}
+  - component: {fileID: -2136703283734389527}
   m_Layer: 0
   m_Name: Boid
   m_TagString: Untagged
@@ -137,12 +138,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BoidAgent
   maxSpeed: 5
   maxAcceleration: 10
-  perceptionRadius: 8
+  perceptionRadius: 12
   separationRadius: 3
-  health: 100
+  maxHealth: 100
   interactionRadius: 1
-  interestDamage: 10
+  interestDamage: 25
   interestDamageInterval: 1
+  respawnDelay: 5
+  respawnXRange: {x: -20, y: 20}
+  respawnZRange: {x: -20, y: 20}
 --- !u!114 &5076944722172835184
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -246,10 +250,13 @@ MonoBehaviour:
   cohesion: {fileID: 5017167771929934193}
   arrive: {fileID: 5869864741000830040}
   evade: {fileID: 485996623472134300}
-  separationWeight: 1.5
+  boundary: {fileID: -2136703283734389527}
+  separationWeight: 2.5
   alignmentWeight: 1
   cohesionWeight: 1
   arriveWeight: 1.5
+  evadeSeparationWeight: 2.5
+  boundaryWeight: 3
 --- !u!114 &242649333336741779
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -264,3 +271,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BoidInterestInteraction
   agent: {fileID: 469644550898942529}
   perception: {fileID: 5076944722172835184}
+--- !u!114 &-2136703283734389527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 435135486191882565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdfd46af6dd55ea4c811e197d00041a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoundaryAvoidanceBehaviour
+  agent: {fileID: 469644550898942529}
+  boundaryMask:
+    serializedVersion: 2
+    m_Bits: 8
+  lookAheadDistance: 5
+  sphereRadius: 0.4
+  whiskerAngle: 35

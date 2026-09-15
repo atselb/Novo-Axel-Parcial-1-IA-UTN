@@ -41,6 +41,8 @@ public class BoidAgent : MonoBehaviour
     public float InterestDamageInterval => interestDamageInterval;
     public float RespawnDelay => respawnDelay;
 
+    // public bool IsEvading => GetComponent<BoidPerception>()?.HasHunterThreat ?? false;
+
     public bool IsCollected {get; private set;}
 
     private void Awake()
@@ -110,6 +112,8 @@ public class BoidAgent : MonoBehaviour
         IsCollected = true;
         
         StartCoroutine(RespawnRoutine());
+
+        Debug.Log($"{name} was collected.");
     }
 
     private IEnumerator RespawnRoutine()
@@ -155,6 +159,8 @@ public class BoidAgent : MonoBehaviour
         IsCollected = false;
 
         SetVisualsActive(true);
+
+        Debug.Log($"{name} respawned.");
     }
 
     private void OnValidate()

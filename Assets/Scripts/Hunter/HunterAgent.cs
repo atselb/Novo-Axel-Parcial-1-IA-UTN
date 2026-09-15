@@ -1,10 +1,11 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class HunterAgent : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float maxSpeed = 4f;
+    [SerializeField] private float maxAcceleration = 8f;
+    [SerializeField] private float rotationSpeed = 180f;
 
     [Header("Perception")]
     [SerializeField] private float perceptionRadius = 12f;
@@ -36,9 +37,11 @@ public class HunterAgent : MonoBehaviour
     private HunterState currentState;
     private float attackCooldownTimer;
 
+    private Vector3 currentVelocity;
     private BoidAgent currentTarget;
 
     public float MaxSpeed => maxSpeed;
+    public Vector3 CurrentVelocity => currentVelocity;
     public float PerceptionRadius => perceptionRadius;
     public HunterPerception Perception => perception;
 
@@ -69,6 +72,16 @@ public class HunterAgent : MonoBehaviour
     public AttackState AttackState { get; private set; }
     public GatherState GatherState { get; private set; }
 
+    public string CurrentStateName => 
+        currentState != null
+        ? currentState.GetType().Name
+        : "None";
+
+    public string CurrentTargetName =>
+        currentTarget != null
+        ? currentTarget.name
+        : "None";
+
     private void Start()
     {
         ChangeState(PatrolState);
@@ -87,24 +100,7 @@ public class HunterAgent : MonoBehaviour
     {   
         UpdateAttackCooldown();
 
-        currentState?.Update();
-
-        // Debugging state changes using keyboard input (commented out)
-        // if (Keyboard.current == null) return;
-
-        // if (Keyboard.current.digit1Key.wasPressedThisFrame)
-        // {
-        //     ChangeState(PatrolState);
-        // }
-        // else if (Keyboard.current.digit2Key.wasPressedThisFrame)
-        // {
-        //     ChangeState(AttackState);
-        // }
-        // else if (Keyboard.current.digit3Key.wasPressedThisFrame)
-        // {
-        //     ChangeState(GatherState);
-        // }
-        
+        currentState?.Update();        
     }
 
     public void ChangeState(HunterState newState)
@@ -129,10 +125,45 @@ public class HunterAgent : MonoBehaviour
 
         if (direction.sqrMagnitude <= 0.001f) return;
         
-        Vector3 velocity = direction.normalized * maxSpeed;
+        Vector3 desiredVelocity = direction.normalized * maxSpeed;
 
-        transform.position += velocity * Time.deltaTime;
-        transform.forward = direction.normalized;
+        Vector3 steering = desiredVelocity - currentVelocity;
+
+        steering = Vector3.ClampMagnitude(
+            steering,
+            maxAcceleration
+        );
+
+        currentVelocity += steering * Time.deltaTime;
+
+        currentVelocity = Vector3.ClampMagnitude(currentVelocity, maxSpeed);
+
+        transform.position += currentVelocity * Time.deltaTime;
+
+        RotateTowardsVelocity();
+    }
+
+    private void RotateTowardsVelocity()
+    {
+        if (currentVelocity.sqrMagnitude <= 0.001f) return;
+
+        Quaternion targetRotation =
+            Quaternion.LookRotation(
+                currentVelocity.normalized,
+                Vector3.up
+            );
+
+        transform.rotation =
+            Quaternion.RotateTowards(
+                transform.rotation,
+                targetRotation,
+                rotationSpeed * Time.deltaTime
+            );
+    }
+
+    public void StopMovement()
+    {
+        currentVelocity = Vector3.zero;
     }
 
     public int GetActiveInterestObjectCount()
@@ -192,6 +223,9 @@ public class HunterAgent : MonoBehaviour
     private void OnValidate()
     {
         maxSpeed = Mathf.Max(0f, maxSpeed);
+        maxAcceleration = Mathf.Max(0f, maxAcceleration);
+        rotationSpeed = Mathf.Max(0f, rotationSpeed);
+
         perceptionRadius = Mathf.Max(0f, perceptionRadius);
 
         tba = Mathf.Max(0f, tba);
@@ -206,5 +240,7 @@ public class HunterAgent : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, rangeAttackRadius);
 
         Gizmos.DrawWireSphere(transform.position, meleeAttackRadius);
+
+        Gizmos.DrawWireSphere(transform.position, gatherRadius);
     }
 }

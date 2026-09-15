@@ -456,6 +456,7 @@ GameObject:
   - component: {fileID: 475078482}
   - component: {fileID: 475078485}
   - component: {fileID: 475078486}
+  - component: {fileID: 475078487}
   m_Layer: 0
   m_Name: Hunter
   m_TagString: Untagged
@@ -571,17 +572,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HunterAgent
   maxSpeed: 4
+  maxAcceleration: 8
+  rotationSpeed: 180
   perceptionRadius: 12
   perception: {fileID: 475078486}
   tba: 3
   rangeAttackRadius: 8
   meleeAttackRadius: 2
+  meleeDamage: 50
+  rangeDamage: 25
   waypoints:
   - {fileID: 130625306}
   - {fileID: 436243044}
   - {fileID: 1315899875}
   - {fileID: 1541328813}
-  waypointReachDistance: 0.5
+  waypointReachDistance: 1.5
+  gatherRadius: 1.5
+  gatherDuration: 2
   interestObjectPrefab: {fileID: 5185650803716884977, guid: 095b1fceaa9865c478644a5d8397afed, type: 3}
   interestSpawnInterval: 5
   maxActiveInterestObjects: 5
@@ -598,6 +605,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a5a5bbf85256de4f81fdd010eb3a858, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HunterPerception
+  hunter: {fileID: 475078485}
+--- !u!114 &475078487
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 475078480}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6807f368b06759f409ca1dffb28fa2ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HunterDebugDisplay
   hunter: {fileID: 475078485}
 --- !u!4 &501186942 stripped
 Transform:
@@ -741,7 +761,7 @@ GameObject:
   - component: {fileID: 788932408}
   - component: {fileID: 788932407}
   - component: {fileID: 788932406}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wall_South
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -853,7 +873,7 @@ GameObject:
   - component: {fileID: 1259818732}
   - component: {fileID: 1259818731}
   - component: {fileID: 1259818730}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wall_East
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1162,7 +1182,7 @@ GameObject:
   - component: {fileID: 1604874710}
   - component: {fileID: 1604874709}
   - component: {fileID: 1604874708}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wall_West
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1638,7 +1658,7 @@ GameObject:
   - component: {fileID: 2146019069}
   - component: {fileID: 2146019068}
   - component: {fileID: 2146019067}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Wall_North
   m_TagString: Untagged
   m_Icon: {fileID: 0}
