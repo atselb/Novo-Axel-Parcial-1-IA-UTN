@@ -15,7 +15,10 @@ public class PatrolState : HunterState
 
     public override void Update()
     {
+        if (TryEnterGather()) return;
+
         if (TryEnterAttack()) return;
+
         UpdatePatrol();
         UpdateInterestObjectSpawn();
     }
@@ -68,6 +71,20 @@ public class PatrolState : HunterState
 
         hunter.SetTarget(target);
         hunter.ChangeState(hunter.AttackState);
+
+        return true;
+    }
+
+    private bool TryEnterGather()
+    {
+        if (!hunter.Perception.HasEliminatedBoids) return false;
+
+        BoidAgent target = hunter.Perception.GetClosestEliminatedBoid();
+
+        if (target == null) return false;
+
+        hunter.SetTarget(target);
+        hunter.ChangeState(hunter.GatherState);
 
         return true;
     }
