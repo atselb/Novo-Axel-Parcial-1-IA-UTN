@@ -251,10 +251,10 @@ MonoBehaviour:
   arrive: {fileID: 5869864741000830040}
   evade: {fileID: 485996623472134300}
   boundary: {fileID: -2136703283734389527}
-  separationWeight: 2.5
+  separationWeight: 3
   alignmentWeight: 1
   cohesionWeight: 1
-  arriveWeight: 3
+  arriveWeight: 1.5
   evadeSeparationWeight: 2.5
   boundaryWeight: 2
 --- !u!114 &242649333336741779

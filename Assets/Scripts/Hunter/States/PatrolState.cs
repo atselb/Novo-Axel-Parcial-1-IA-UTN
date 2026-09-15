@@ -10,7 +10,6 @@ public class PatrolState : HunterState
     public override void Enter()
     {
         Debug.Log("Hunter entered Patrol state.");
-        interestSpawnTimer = 0f;
     }
 
     public override void Update()

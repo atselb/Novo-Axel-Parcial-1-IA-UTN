@@ -63,7 +63,7 @@ public class AttackState : HunterState
     {
         target.TakeDamage(hunter.MeleeDamage);
 
-        Debug.Log($"Hunter performs melee attakc on {target.name}");
+        Debug.Log($"Hunter performs melee attack on {target.name}");
 
         hunter.RegisterSuccessfulAttack();
         ReturnToPatrol();
