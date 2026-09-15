@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 1839113196632501632}
   - component: {fileID: 5017167771929934193}
   - component: {fileID: 5869864741000830040}
+  - component: {fileID: 485996623472134300}
   - component: {fileID: 2262121714630769335}
   - component: {fileID: 242649333336741779}
   m_Layer: 0
@@ -212,6 +213,20 @@ MonoBehaviour:
   agent: {fileID: 469644550898942529}
   slowRadius: 4
   stopRadius: 0.8
+--- !u!114 &485996623472134300
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 435135486191882565}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b09b6189ffda7d945ac3ac5f7a278413, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EvadeBehaviour
+  agent: {fileID: 469644550898942529}
+  predictionTime: 1
 --- !u!114 &2262121714630769335
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,6 +245,7 @@ MonoBehaviour:
   alignment: {fileID: 1839113196632501632}
   cohesion: {fileID: 5017167771929934193}
   arrive: {fileID: 5869864741000830040}
+  evade: {fileID: 485996623472134300}
   separationWeight: 1.5
   alignmentWeight: 1
   cohesionWeight: 1

@@ -10,6 +10,7 @@ public class FlockingBehaviour : MonoBehaviour
     [SerializeField] private AlignmentBehaviour alignment;
     [SerializeField] private CohesionBehaviour cohesion;
     [SerializeField] private ArriveBehaviour arrive;
+    [SerializeField] private EvadeBehaviour evade;
 
     [Header("Weights")]
     [SerializeField] private float separationWeight = 1.5f;
@@ -26,6 +27,13 @@ public class FlockingBehaviour : MonoBehaviour
 
     private Vector3 CalculateFlocking()
     {
+        HunterAgent hunter = perception.PerceivedHunter;
+
+        if (hunter != null)
+        {
+            return evade.Calculate(hunter);
+        }
+
         Vector3 separationVelocity = separation.Calculate() * separationWeight;
         Vector3 alignmentVelocity = alignment.Calculate() * alignmentWeight;
         Vector3 cohesionVelocity = cohesion.Calculate() * cohesionWeight;
