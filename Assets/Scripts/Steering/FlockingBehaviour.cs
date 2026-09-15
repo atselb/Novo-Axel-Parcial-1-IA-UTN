@@ -1,3 +1,4 @@
+using NUnit.Framework;
 using UnityEngine;
 
 public class FlockingBehaviour : MonoBehaviour
@@ -11,12 +12,19 @@ public class FlockingBehaviour : MonoBehaviour
     [SerializeField] private CohesionBehaviour cohesion;
     [SerializeField] private ArriveBehaviour arrive;
     [SerializeField] private EvadeBehaviour evade;
+    [SerializeField] private BoundaryAvoidanceBehaviour boundary;
 
     [Header("Weights")]
     [SerializeField] private float separationWeight = 1.5f;
     [SerializeField] private float alignmentWeight = 1f;
     [SerializeField] private float cohesionWeight = 1f;
     [SerializeField] private float arriveWeight = 1.5f;
+
+    [Header("Priority Weights")]
+    [SerializeField] private float evadeSeparationWeight = 2.5f;
+    [SerializeField] private float boundaryWeight = 3f;
+
+    public bool IsEvading {get; private set;}
 
     private void Update()
     {
@@ -31,25 +39,79 @@ public class FlockingBehaviour : MonoBehaviour
     {
         HunterAgent hunter = perception.PerceivedHunter;
 
-        if (hunter != null)
+        Vector3 separationVelocity = separation.Calculate();
+        Vector3 boundaryVelocity = boundary.Calculate();
+
+        // 1. Boundary safety
+        if (boundaryVelocity.sqrMagnitude > 0.001f)
         {
-            return evade.Calculate(hunter);
+            Vector3 emergencyVelocity = 
+                boundaryVelocity * boundaryWeight +
+                separationVelocity * evadeSeparationWeight;
+            
+            if (hunter != null)
+            {
+                IsEvading = true;
+                emergencyVelocity += evade.Calculate(hunter);
+            }
+            else
+            {
+                IsEvading = false;
+            }
+
+            return Vector3.ClampMagnitude(emergencyVelocity, agent.MaxSpeed);
         }
 
-        Vector3 separationVelocity = separation.Calculate() * separationWeight;
-        Vector3 alignmentVelocity = alignment.Calculate() * alignmentWeight;
-        Vector3 cohesionVelocity = cohesion.Calculate() * cohesionWeight;
-        Vector3 arriveVelocity = Vector3.zero;
+        // 2. Hunter threat
+        if (hunter != null)
+        {
+            IsEvading = true;
+
+            Vector3 escapeVelocity = 
+                evade.Calculate(hunter) + 
+                separationVelocity * evadeSeparationWeight;
+            
+            return Vector3.ClampMagnitude(escapeVelocity, agent.MaxSpeed);
+        }
+
+        IsEvading = false;
+
+        // 3. Interest object
 
         InterestObject target = perception.GetClosestInterestObject();
 
         if (target != null)
         {
-            arriveVelocity = arrive.Calculate(target.transform.position) * arriveWeight;
+            Vector3 arriveVelocity =
+                arrive.Calculate(target.transform.position);
+
+            Vector3 interestVelocity =
+                arriveVelocity * arriveWeight +
+                separationVelocity * separationWeight;
+            
+            return Vector3.ClampMagnitude(
+                interestVelocity,
+                agent.MaxSpeed
+            );
+
         }
 
-        Vector3 flockingVelocity = separationVelocity + alignmentVelocity + cohesionVelocity + arriveVelocity;
+        // 4. Normal flocking
 
-        return Vector3.ClampMagnitude(flockingVelocity, agent.MaxSpeed);
+        Vector3 alignmentVelocity = alignment.Calculate() * alignmentWeight;
+
+        Vector3 cohesionVelocity = cohesion.Calculate() * cohesionWeight;
+
+        Vector3 flockingVelocity = 
+            separationVelocity * separationWeight +
+            alignmentVelocity +
+            cohesionVelocity;
+
+        return Vector3.ClampMagnitude(
+            flockingVelocity,
+            agent.MaxSpeed
+        );
     }
+
+    
 }
