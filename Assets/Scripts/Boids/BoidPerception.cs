@@ -25,12 +25,12 @@ public class BoidPerception : MonoBehaviour
     {
         DetectNearbyObjects();
 
-        if (perceivedInterestObjects.Count > 0)
-        {
-            Debug.Log(
-                $"{name} detected {perceivedInterestObjects.Count} interest objects."
-            );
-        }
+        // if (perceivedInterestObjects.Count > 0)
+        // {
+        //     Debug.Log(
+        //         $"{name} detected {perceivedInterestObjects.Count} interest objects."
+        //     );
+        // }
     }
 
     private void DetectNearbyObjects()
@@ -94,10 +94,10 @@ public class BoidPerception : MonoBehaviour
 
         perceivedHunter = hunter;
 
-        if (perceivedHunter != null)
-        {
-            Debug.Log($"{name} detected the Hunter");
-        }
+        // if (perceivedHunter != null)
+        // {
+        //     Debug.Log($"{name} detected the Hunter");
+        // }
     }
 
     public InterestObject GetClosestInterestObject()
