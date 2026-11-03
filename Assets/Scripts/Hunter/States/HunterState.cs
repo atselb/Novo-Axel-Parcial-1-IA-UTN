@@ -1,5 +1,5 @@
 
-public abstract class HunterState
+public abstract class HunterState : IState
 {
     protected readonly HunterAgent hunter;
 

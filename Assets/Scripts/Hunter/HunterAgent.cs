@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 public class HunterAgent : MonoBehaviour
@@ -40,7 +41,7 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float interestSpawnHeight = 1f;
     [SerializeField] private int maxSpawnAttempts = 10;
 
-    private HunterState currentState;
+    private StateMachine stateMachine;
     private float attackCooldownTimer;
 
     private Vector3 currentVelocity;
@@ -58,7 +59,9 @@ public class HunterAgent : MonoBehaviour
     public float MeleeDamage => meleeDamage;
     public float RangeDamage => rangeDamage;
 
-    public HunterState CurrentState => currentState;
+    public HunterState CurrentState =>
+        stateMachine?.CurrentState as HunterState;
+
     public Transform[] Waypoints => waypoints;
     public float WaypointReachDistance => waypointReachDistance;
 
@@ -78,23 +81,20 @@ public class HunterAgent : MonoBehaviour
     public AttackState AttackState { get; private set; }
     public GatherState GatherState { get; private set; }
 
-    public string CurrentStateName => 
-        currentState != null
-        ? currentState.GetType().Name
-        : "None";
+    public string CurrentStateName =>
+        CurrentState != null
+            ? CurrentState.GetType().Name
+            : "None";
 
     public string CurrentTargetName =>
         currentTarget != null
-        ? currentTarget.name
-        : "None";
-
-    private void Start()
-    {
-        ChangeState(PatrolState);
-    }
+            ? currentTarget.name
+            : "None";
 
     private void Awake()
     {
+        stateMachine = new StateMachine();
+
         PatrolState = new PatrolState(this);
         AttackState = new AttackState(this);
         GatherState = new GatherState(this);
@@ -102,25 +102,21 @@ public class HunterAgent : MonoBehaviour
         attackCooldownTimer = tba;
     }
 
+    private void Start()
+    {
+        ChangeState(PatrolState);
+    }
+
     private void Update()
-    {   
+    {
         UpdateAttackCooldown();
 
-        currentState?.Update();        
+        stateMachine?.Update();
     }
 
     public void ChangeState(HunterState newState)
     {
-        if (newState == null)
-        {
-            return;
-        }
-
-        currentState?.Exit();
-
-        currentState = newState;
-
-        currentState.Enter();
+        stateMachine?.ChangeState(newState);
     }
 
     public void MoveTowards(Vector3 targetPosition)
@@ -130,7 +126,7 @@ public class HunterAgent : MonoBehaviour
         direction.y = 0f;
 
         if (direction.sqrMagnitude <= 0.001f) return;
-        
+
         Vector3 desiredVelocity = direction.normalized * maxSpeed;
 
         Vector3 steering = desiredVelocity - currentVelocity;
