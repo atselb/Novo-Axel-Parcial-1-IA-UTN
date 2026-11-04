@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 public class HunterDebugDisplay : MonoBehaviour
@@ -6,7 +7,10 @@ public class HunterDebugDisplay : MonoBehaviour
 
     private void OnGUI()
     {
-        if (hunter == null) return;
+        if (hunter == null)
+        {
+            return;
+        }
 
         GUILayout.BeginArea(
             new Rect(10f, 10f, 350f, 200f)
@@ -19,6 +23,19 @@ public class HunterDebugDisplay : MonoBehaviour
         GUILayout.Label(
             $"Target: {hunter.CurrentTargetName}"
         );
+
+        GUILayout.Label(
+            $"Gathers: {hunter.GatherCount}/" +
+            $"{hunter.RequiredGathers}"
+        );
+
+        if (hunter.IsDead)
+        {
+            GUILayout.Label(
+                $"Respawn in: " +
+                $"{hunter.DeadState.RemainingTime:0.0}s"
+            );
+        }
 
         if (hunter.Perception != null)
         {

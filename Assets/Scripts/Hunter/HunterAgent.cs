@@ -1,3 +1,5 @@
+
+using System.Collections.Generic;
 using UnityEngine;
 
 public class HunterAgent : MonoBehaviour
@@ -6,6 +8,11 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float maxSpeed = 4f;
     [SerializeField] private float maxAcceleration = 8f;
     [SerializeField] private float rotationSpeed = 180f;
+
+    [Header("Navigation")]
+    [SerializeField] private NavigationGraph navigationGraph;
+    [SerializeField] private Renderer startZoneRenderer;
+    [SerializeField] private float pathNodeReachDistance = 0.1f;
 
     [Header("Perception")]
     [SerializeField] private float perceptionRadius = 12f;
@@ -24,6 +31,13 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private Transform[] waypoints;
     [SerializeField] private float waypointReachDistance = 0.5f;
 
+    [Header("Objective - Parcial 2")]
+    [SerializeField, Min(1)] private int requiredGathers = 3;
+    [SerializeField] private Renderer exitZoneRenderer;
+
+    [Header("Capture / Respawn - Parcial 2")]
+    [SerializeField, Min(0.1f)] private float respawnTime = 5f;
+
     [Header("Gather")]
     [SerializeField] private float gatherRadius = 1.5f;
     [SerializeField] private float gatherDuration = 2f;
@@ -35,30 +49,45 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float interestSpawnRadius = 10f;
 
     [Header("Interest Object Spawn Bounds")]
-    [SerializeField] private Vector2 arenaXBounds = new Vector2(-24f, 24f);
-    [SerializeField] private Vector2 arenaZBounds = new Vector2(-24f, 24f);
+    [SerializeField] private Renderer huntingGroundRenderer;
+    [SerializeField] private Transform obstaclesRoot;
     [SerializeField] private float interestSpawnHeight = 1f;
+    [SerializeField] private float spawnBoundsPadding = 1f;
+    [SerializeField] private float spawnObstacleClearance = 1f;
     [SerializeField] private int maxSpawnAttempts = 10;
 
-    private HunterState currentState;
+    private Collider[] obstacleColliders;
+    private StateMachine stateMachine;
     private float attackCooldownTimer;
-
     private Vector3 currentVelocity;
     private BoidAgent currentTarget;
+    private int gatherCount;
+
+    private Renderer[] bodyRenderers;
+    private bool[] rendererInitialStates;
+    private Collider[] bodyColliders;
+    private bool[] colliderInitialStates;
+    private bool perceptionWasEnabled;
 
     public float MaxSpeed => maxSpeed;
     public Vector3 CurrentVelocity => currentVelocity;
+
+    public NavigationGraph NavigationGraph => navigationGraph;
+    public Renderer HuntingGroundRenderer => huntingGroundRenderer;
+    public float PathNodeReachDistance => pathNodeReachDistance;
+
     public float PerceptionRadius => perceptionRadius;
     public HunterPerception Perception => perception;
 
     public float TBA => tba;
     public float RangeAttackRadius => rangeAttackRadius;
     public float MeleeAttackRadius => meleeAttackRadius;
-
     public float MeleeDamage => meleeDamage;
     public float RangeDamage => rangeDamage;
 
-    public HunterState CurrentState => currentState;
+    public HunterState CurrentState =>
+        stateMachine?.CurrentState as HunterState;
+
     public Transform[] Waypoints => waypoints;
     public float WaypointReachDistance => waypointReachDistance;
 
@@ -74,66 +103,368 @@ public class HunterAgent : MonoBehaviour
     public float GatherRadius => gatherRadius;
     public float GatherDuration => gatherDuration;
 
-    public PatrolState PatrolState { get; private set; }
+    public int RequiredGathers => requiredGathers;
+    public int GatherCount => gatherCount;
+    public bool HasRequiredGathers => gatherCount >= requiredGathers;
+    public Renderer ExitZoneRenderer => exitZoneRenderer;
+    public float RespawnTime => respawnTime;
+    public bool IsDead => DeadState != null && CurrentState == DeadState;
+
+    public SearchState SearchState { get; private set; }
     public AttackState AttackState { get; private set; }
     public GatherState GatherState { get; private set; }
+    public ExitState ExitState { get; private set; }
+    public DeadState DeadState { get; private set; }
 
-    public string CurrentStateName => 
-        currentState != null
-        ? currentState.GetType().Name
-        : "None";
+    public HunterFleeContext FleeContext { get; private set; }
+    public FleeState FleeState { get; private set; }
+
+    public HunterState PatrolState => SearchState;
+
+    public string CurrentStateName =>
+        CurrentState != null
+            ? CurrentState.GetType().Name
+            : "None";
 
     public string CurrentTargetName =>
         currentTarget != null
-        ? currentTarget.name
-        : "None";
-
-    private void Start()
-    {
-        ChangeState(PatrolState);
-    }
+            ? currentTarget.name
+            : "None";
 
     private void Awake()
     {
-        PatrolState = new PatrolState(this);
+        stateMachine = new StateMachine();
+
+        SearchState = new SearchState(this);
         AttackState = new AttackState(this);
         GatherState = new GatherState(this);
+        ExitState = new ExitState(this);
+        DeadState = new DeadState(this);
+
+        FleeContext = GetComponent<HunterFleeContext>();
+        FleeState = new FleeState(
+            this,
+            SearchState,
+            FleeContext
+        );
 
         attackCooldownTimer = tba;
+        gatherCount = 0;
+
+        CacheObstacleColliders();
+        CacheHunterPresentation();
+    }
+
+    private void Start()
+    {
+        if (navigationGraph == null ||
+            !navigationGraph.IsReady ||
+            startZoneRenderer == null ||
+            huntingGroundRenderer == null ||
+            exitZoneRenderer == null ||
+            perception == null)
+        {
+            Debug.LogError(
+                $"{name}: Missing Hunter navigation or " +
+                "perception references.",
+                this
+            );
+
+            enabled = false;
+            return;
+        }
+
+        if (FleeContext == null || !FleeContext.IsReady)
+        {
+            Debug.LogError(
+                $"{name}: HunterFleeContext is missing " +
+                "or has unassigned references.",
+                this
+            );
+
+            enabled = false;
+            return;
+        }
+
+        Vector3 startPosition =
+            startZoneRenderer.bounds.center;
+
+        startPosition.y = transform.position.y;
+        transform.position = startPosition;
+
+        StopMovement();
+        ChangeState(SearchState);
     }
 
     private void Update()
-    {   
+    {
         UpdateAttackCooldown();
-
-        currentState?.Update();        
+        stateMachine?.Update();
     }
 
     public void ChangeState(HunterState newState)
     {
-        if (newState == null)
+        if (newState == null) return;
+
+        // Dead has absolute priority.
+        if (IsDead && newState != DeadState)
         {
             return;
         }
 
-        currentState?.Exit();
+        stateMachine?.ChangeState(newState);
+    }
 
-        currentState = newState;
+    public bool TryBeCaptured(WolfAgent wolf)
+    {
+        if (wolf == null ||
+            !isActiveAndEnabled ||
+            CurrentState == null ||
+            IsDead ||
+            DeadState == null ||
+            (FleeContext != null &&
+             FleeContext.IsInsideSafeZone(transform.position)))
+        {
+            return false;
+        }
 
-        currentState.Enter();
+        Debug.Log(
+            $"[Hunter Dead] Captured by {wolf.name}. " +
+            $"Respawning in {respawnTime:0.0}s."
+        );
+
+        ChangeState(DeadState);
+        return true;
+    }
+
+    public void CompleteDeathRespawn()
+    {
+        if (!IsDead || startZoneRenderer == null)
+        {
+            return;
+        }
+
+        StopMovement();
+        ClearTarget();
+
+        gatherCount = 0;
+        attackCooldownTimer = tba;
+
+        Vector3 startPosition =
+            startZoneRenderer.bounds.center;
+
+        startPosition.y = transform.position.y;
+        transform.position = startPosition;
+
+        // The only transition allowed out of Dead.
+        stateMachine.ChangeState(SearchState);
+
+        Debug.Log(
+            "[Hunter Dead] Respawned at Zone_Start. " +
+            "Gathers: 0. State: Search."
+        );
+    }
+
+    private void CacheHunterPresentation()
+    {
+        bodyRenderers =
+            GetComponentsInChildren<Renderer>(true);
+
+        rendererInitialStates =
+            new bool[bodyRenderers.Length];
+
+        for (int i = 0; i < bodyRenderers.Length; i++)
+        {
+            rendererInitialStates[i] =
+                bodyRenderers[i].enabled;
+        }
+
+        bodyColliders =
+            GetComponentsInChildren<Collider>(true);
+
+        colliderInitialStates =
+            new bool[bodyColliders.Length];
+
+        for (int i = 0; i < bodyColliders.Length; i++)
+        {
+            colliderInitialStates[i] =
+                bodyColliders[i].enabled;
+        }
+    }
+
+    // Keep the GameObject active so DeadState.Update()
+    // can count the respawn time.
+    public void SetDeathPresentation(bool visible)
+    {
+        if (bodyRenderers != null)
+        {
+            for (int i = 0; i < bodyRenderers.Length; i++)
+            {
+                if (bodyRenderers[i] != null)
+                {
+                    bodyRenderers[i].enabled =
+                        visible && rendererInitialStates[i];
+                }
+            }
+        }
+
+        if (bodyColliders != null)
+        {
+            for (int i = 0; i < bodyColliders.Length; i++)
+            {
+                if (bodyColliders[i] != null)
+                {
+                    bodyColliders[i].enabled =
+                        visible && colliderInitialStates[i];
+                }
+            }
+        }
+
+        if (perception != null)
+        {
+            if (!visible)
+            {
+                perceptionWasEnabled = perception.enabled;
+                perception.enabled = false;
+            }
+            else
+            {
+                perception.enabled = perceptionWasEnabled;
+            }
+        }
+    }
+
+    public bool TryEnterFlee()
+    {
+        if (IsDead ||
+            CurrentState == FleeState ||
+            FleeContext == null ||
+            !FleeContext.CanSeeWolf())
+        {
+            return false;
+        }
+
+        StopMovement();
+        ClearTarget();
+        ChangeState(FleeState);
+
+        return true;
+    }
+
+    public void RegisterSuccessfulGather()
+    {
+        gatherCount++;
+
+        Debug.Log(
+            $"[Hunter Objective] {gatherCount}/" +
+            $"{requiredGathers} Boids collected."
+        );
+    }
+
+    public bool IsInsideExitZone(Vector3 position)
+    {
+        if (exitZoneRenderer == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = exitZoneRenderer.bounds;
+
+        return position.x >= bounds.min.x &&
+               position.x <= bounds.max.x &&
+               position.z >= bounds.min.z &&
+               position.z <= bounds.max.z;
+    }
+
+    public void CompleteEscapeAndRestart()
+    {
+        if (CurrentState != ExitState)
+        {
+            return;
+        }
+
+        StopMovement();
+        ClearTarget();
+        gatherCount = 0;
+
+        Vector3 startPosition =
+            startZoneRenderer.bounds.center;
+
+        startPosition.y = transform.position.y;
+        transform.position = startPosition;
+
+        Debug.Log(
+            "[Hunter Exit] Escaped! Respawned at Start. " +
+            "Gathers: 0."
+        );
+
+        ChangeState(SearchState);
+    }
+
+    public bool IsInsideHuntingGround(Vector3 position)
+    {
+        if (huntingGroundRenderer == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = huntingGroundRenderer.bounds;
+
+        return position.x >= bounds.min.x &&
+               position.x <= bounds.max.x &&
+               position.z >= bounds.min.z &&
+               position.z <= bounds.max.z;
+    }
+
+    public void MoveAlongPath(Vector3 targetPosition)
+    {
+        Vector3 target = new Vector3(
+            targetPosition.x,
+            transform.position.y,
+            targetPosition.z
+        );
+
+        Vector3 previousPosition = transform.position;
+
+        Vector3 nextPosition = Vector3.MoveTowards(
+            previousPosition,
+            target,
+            maxSpeed * Time.deltaTime
+        );
+
+        transform.position = nextPosition;
+
+        if (Time.deltaTime > 0f)
+        {
+            currentVelocity =
+                (nextPosition - previousPosition) /
+                Time.deltaTime;
+        }
+        else
+        {
+            currentVelocity = Vector3.zero;
+        }
+
+        RotateTowardsVelocity();
     }
 
     public void MoveTowards(Vector3 targetPosition)
     {
-        Vector3 direction = targetPosition - transform.position;
+        Vector3 direction =
+            targetPosition - transform.position;
 
         direction.y = 0f;
 
-        if (direction.sqrMagnitude <= 0.001f) return;
-        
-        Vector3 desiredVelocity = direction.normalized * maxSpeed;
+        if (direction.sqrMagnitude <= 0.001f)
+        {
+            return;
+        }
 
-        Vector3 steering = desiredVelocity - currentVelocity;
+        Vector3 desiredVelocity =
+            direction.normalized * maxSpeed;
+
+        Vector3 steering =
+            desiredVelocity - currentVelocity;
 
         steering = Vector3.ClampMagnitude(
             steering,
@@ -142,16 +473,23 @@ public class HunterAgent : MonoBehaviour
 
         currentVelocity += steering * Time.deltaTime;
 
-        currentVelocity = Vector3.ClampMagnitude(currentVelocity, maxSpeed);
+        currentVelocity = Vector3.ClampMagnitude(
+            currentVelocity,
+            maxSpeed
+        );
 
-        transform.position += currentVelocity * Time.deltaTime;
+        transform.position +=
+            currentVelocity * Time.deltaTime;
 
         RotateTowardsVelocity();
     }
 
     private void RotateTowardsVelocity()
     {
-        if (currentVelocity.sqrMagnitude <= 0.001f) return;
+        if (currentVelocity.sqrMagnitude <= 0.001f)
+        {
+            return;
+        }
 
         Quaternion targetRotation =
             Quaternion.LookRotation(
@@ -179,21 +517,78 @@ public class HunterAgent : MonoBehaviour
         ).Length;
     }
 
+    private void CacheObstacleColliders()
+    {
+        if (obstaclesRoot == null)
+        {
+            Debug.LogError(
+                $"{name}: Obstacles Root is not assigned.",
+                this
+            );
+            return;
+        }
+
+        obstacleColliders =
+            obstaclesRoot.GetComponentsInChildren<Collider>();
+
+        if (obstacleColliders.Length == 0)
+        {
+            Debug.LogError(
+                $"{name}: No obstacle colliders found.",
+                this
+            );
+        }
+    }
+
     public void SpawnInterestObject()
     {
-        if (interestObjectPrefab == null) return;
-
-        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        if (interestObjectPrefab == null)
         {
-            Vector2 randomCircle = Random.insideUnitCircle * interestSpawnRadius;
+            return;
+        }
+
+        if (huntingGroundRenderer == null)
+        {
+            Debug.LogError(
+                $"{name}: Hunting Ground Renderer " +
+                "is not assigned.",
+                this
+            );
+            return;
+        }
+
+        if (obstacleColliders == null ||
+            obstacleColliders.Length == 0)
+        {
+            return;
+        }
+
+        Bounds bounds = huntingGroundRenderer.bounds;
+        Vector3 spawnCenter = bounds.center;
+
+        for (int attempt = 0;
+             attempt < maxSpawnAttempts;
+             attempt++)
+        {
+            Vector2 randomCircle =
+                Random.insideUnitCircle *
+                interestSpawnRadius;
 
             Vector3 spawnPosition = new Vector3(
-                transform.position.x + randomCircle.x,
+                spawnCenter.x + randomCircle.x,
                 interestSpawnHeight,
-                transform.position.z + randomCircle.y
+                spawnCenter.z + randomCircle.y
             );
 
-            if (!IsInsideArena(spawnPosition)) continue;
+            if (!IsInsideArena(spawnPosition))
+            {
+                continue;
+            }
+
+            if (!IsClearOfObstacles(spawnPosition))
+            {
+                continue;
+            }
 
             Instantiate(
                 interestObjectPrefab,
@@ -204,16 +599,66 @@ public class HunterAgent : MonoBehaviour
             return;
         }
 
-        Debug.LogWarning("Hunter could not find a valid position to spawn a InterestObject.");
+        Debug.LogWarning(
+            $"{name}: Could not find a valid position " +
+            "for an InterestObject.",
+            this
+        );
     }
 
     private bool IsInsideArena(Vector3 position)
     {
-        return
-            position.x >= arenaXBounds.x &&
-            position.x <= arenaXBounds.y &&
-            position.z >= arenaZBounds.x &&
-            position.z <= arenaZBounds.y;
+        if (huntingGroundRenderer == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = huntingGroundRenderer.bounds;
+
+        float minX = bounds.min.x + spawnBoundsPadding;
+        float maxX = bounds.max.x - spawnBoundsPadding;
+        float minZ = bounds.min.z + spawnBoundsPadding;
+        float maxZ = bounds.max.z - spawnBoundsPadding;
+
+        if (minX >= maxX || minZ >= maxZ)
+        {
+            return false;
+        }
+
+        return position.x >= minX &&
+               position.x <= maxX &&
+               position.z >= minZ &&
+               position.z <= maxZ;
+    }
+
+    private bool IsClearOfObstacles(Vector3 position)
+    {
+        float clearanceSqr =
+            spawnObstacleClearance * spawnObstacleClearance;
+
+        foreach (Collider obstacle in obstacleColliders)
+        {
+            if (obstacle == null ||
+                !obstacle.enabled ||
+                !obstacle.gameObject.activeInHierarchy ||
+                obstacle.isTrigger)
+            {
+                continue;
+            }
+
+            Vector3 closestPoint =
+                obstacle.ClosestPoint(position);
+
+            float distanceSqr =
+                (closestPoint - position).sqrMagnitude;
+
+            if (distanceSqr <= clearanceSqr)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void UpdateAttackCooldown()
@@ -246,28 +691,107 @@ public class HunterAgent : MonoBehaviour
 
     private void OnValidate()
     {
+        requiredGathers = Mathf.Max(1, requiredGathers);
+        respawnTime = Mathf.Max(0.1f, respawnTime);
+
         maxSpeed = Mathf.Max(0f, maxSpeed);
         maxAcceleration = Mathf.Max(0f, maxAcceleration);
         rotationSpeed = Mathf.Max(0f, rotationSpeed);
+
+        pathNodeReachDistance = Mathf.Max(
+            0.05f,
+            pathNodeReachDistance
+        );
 
         perceptionRadius = Mathf.Max(0f, perceptionRadius);
 
         maxSpawnAttempts = Mathf.Max(1, maxSpawnAttempts);
         interestSpawnRadius = Mathf.Max(0f, interestSpawnRadius);
+        spawnBoundsPadding = Mathf.Max(0f, spawnBoundsPadding);
+        spawnObstacleClearance =
+            Mathf.Max(0f, spawnObstacleClearance);
 
         tba = Mathf.Max(0f, tba);
         rangeAttackRadius = Mathf.Max(0f, rangeAttackRadius);
-        meleeAttackRadius = Mathf.Clamp(meleeAttackRadius, 0f, rangeAttackRadius);
+
+        meleeAttackRadius = Mathf.Clamp(
+            meleeAttackRadius,
+            0f,
+            rangeAttackRadius
+        );
     }
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.DrawWireSphere(transform.position, perceptionRadius);
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            perceptionRadius
+        );
 
-        Gizmos.DrawWireSphere(transform.position, rangeAttackRadius);
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            rangeAttackRadius
+        );
 
-        Gizmos.DrawWireSphere(transform.position, meleeAttackRadius);
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            meleeAttackRadius
+        );
 
-        Gizmos.DrawWireSphere(transform.position, gatherRadius);
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            gatherRadius
+        );
+
+        IReadOnlyList<NavigationNode> path;
+        int pathIndex;
+
+        if (CurrentState == ExitState && ExitState != null)
+        {
+            path = ExitState.CurrentPath;
+            pathIndex = ExitState.CurrentPathIndex;
+            Gizmos.color = Color.blue;
+        }
+        else
+        {
+            if (SearchState == null)
+            {
+                return;
+            }
+
+            path = SearchState.CurrentPath;
+            pathIndex = SearchState.CurrentPathIndex;
+            Gizmos.color = Color.cyan;
+        }
+
+        if (path == null || path.Count == 0)
+        {
+            return;
+        }
+
+        for (int i = pathIndex;
+             i < path.Count;
+             i++)
+        {
+            Vector3 position =
+                path[i].Position + Vector3.up * 0.5f;
+
+            Gizmos.DrawSphere(position, 0.2f);
+
+            if (i > pathIndex)
+            {
+                Vector3 previousPosition =
+                    path[i - 1].Position + Vector3.up * 0.5f;
+
+                Gizmos.DrawLine(
+                    previousPosition,
+                    position
+                );
+            }
+        }
     }
 }
