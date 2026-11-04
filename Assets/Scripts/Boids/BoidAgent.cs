@@ -1,3 +1,4 @@
+
 using System.Collections;
 using UnityEngine;
 
@@ -20,10 +21,12 @@ public class BoidAgent : MonoBehaviour
     [SerializeField] private float interestDamage = 10f;
     [SerializeField] private float interestDamageInterval = 1f;
 
+    [Header("Hunting Ground Bounds")]
+    [SerializeField] private Renderer huntingGroundRenderer;
+    [SerializeField, Min(0f)] private float boundaryPadding = 1f;
+
     [Header("Respawn")]
     [SerializeField] private float respawnDelay = 5f;
-    [SerializeField] private Vector2 respawnXRange = new Vector2(-20f, 20f);
-    [SerializeField] private Vector2 respawnZRange = new Vector2(-20f, 20f);
 
     private Vector3 currentVelocity;
     private bool isActive = true;
@@ -41,11 +44,26 @@ public class BoidAgent : MonoBehaviour
     public float InterestDamageInterval => interestDamageInterval;
     public float RespawnDelay => respawnDelay;
 
-    public bool IsCollected {get; private set;}
+    public bool IsCollected { get; private set; }
 
     private void Awake()
     {
         currentHealth = maxHealth;
+    }
+
+    private void Start()
+    {
+        if (huntingGroundRenderer == null)
+        {
+            Debug.LogError(
+                $"{name}: Hunting Ground Renderer is not assigned.",
+                this
+            );
+
+            return;
+        }
+
+        KeepInsideHuntingGround();
     }
 
     public void ApplySteering(Vector3 desiredVelocity)
@@ -61,7 +79,9 @@ public class BoidAgent : MonoBehaviour
 
         currentVelocity += steering * Time.deltaTime;
 
-        SetVelocity(Vector3.ClampMagnitude(currentVelocity, maxSpeed));
+        SetVelocity(
+            Vector3.ClampMagnitude(currentVelocity, maxSpeed)
+        );
 
         Move();
     }
@@ -72,10 +92,77 @@ public class BoidAgent : MonoBehaviour
 
         transform.position += currentVelocity * Time.deltaTime;
 
-        if (CurrentVelocity.sqrMagnitude > 0.001f)
+        KeepInsideHuntingGround();
+
+        if (currentVelocity.sqrMagnitude > 0.001f)
         {
             transform.forward = currentVelocity.normalized;
         }
+    }
+
+    private void KeepInsideHuntingGround()
+    {
+        if (!TryGetHuntingBounds(
+            out float minX,
+            out float maxX,
+            out float minZ,
+            out float maxZ))
+        {
+            return;
+        }
+
+        Vector3 position = transform.position;
+
+        float clampedX = Mathf.Clamp(position.x, minX, maxX);
+        float clampedZ = Mathf.Clamp(position.z, minZ, maxZ);
+
+        if (!Mathf.Approximately(position.x, clampedX))
+        {
+            currentVelocity.x = 0f;
+        }
+
+        if (!Mathf.Approximately(position.z, clampedZ))
+        {
+            currentVelocity.z = 0f;
+        }
+
+        position.x = clampedX;
+        position.z = clampedZ;
+
+        transform.position = position;
+    }
+
+    private bool TryGetHuntingBounds(
+        out float minX,
+        out float maxX,
+        out float minZ,
+        out float maxZ)
+    {
+        minX = 0f;
+        maxX = 0f;
+        minZ = 0f;
+        maxZ = 0f;
+
+        if (huntingGroundRenderer == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = huntingGroundRenderer.bounds;
+
+        if (bounds.extents.x <= boundaryPadding ||
+            bounds.extents.z <= boundaryPadding)
+        {
+            return false;
+        }
+
+        minX = bounds.min.x + boundaryPadding;
+        maxX = bounds.max.x - boundaryPadding;
+
+        minZ = bounds.min.z + boundaryPadding;
+        maxZ = bounds.max.z - boundaryPadding;
+
+        return true;
     }
 
     public void SetVelocity(Vector3 velocity)
@@ -90,7 +177,10 @@ public class BoidAgent : MonoBehaviour
         currentHealth -= amount;
         currentHealth = Mathf.Max(0f, currentHealth);
 
-        if (currentHealth <= 0f) Die();
+        if (currentHealth <= 0f)
+        {
+            Die();
+        }
     }
 
     private void Die()
@@ -104,11 +194,10 @@ public class BoidAgent : MonoBehaviour
     public void Collect()
     {
         if (isActive) return;
-
         if (IsCollected) return;
 
         IsCollected = true;
-        
+
         StartCoroutine(RespawnRoutine());
 
         Debug.Log($"{name} was collected.");
@@ -125,14 +214,16 @@ public class BoidAgent : MonoBehaviour
 
     private void SetVisualsActive(bool value)
     {
-        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        Renderer[] renderers =
+            GetComponentsInChildren<Renderer>();
 
         foreach (Renderer renderer in renderers)
         {
             renderer.enabled = value;
         }
 
-        Collider[] colliders = GetComponentsInChildren<Collider>();
+        Collider[] colliders =
+            GetComponentsInChildren<Collider>();
 
         foreach (Collider collider in colliders)
         {
@@ -142,10 +233,24 @@ public class BoidAgent : MonoBehaviour
 
     private void Respawn()
     {
+        if (!TryGetHuntingBounds(
+            out float minX,
+            out float maxX,
+            out float minZ,
+            out float maxZ))
+        {
+            Debug.LogError(
+                $"{name}: Cannot respawn without valid hunting ground bounds.",
+                this
+            );
+
+            return;
+        }
+
         Vector3 randomPosition = new Vector3(
-            Random.Range(respawnXRange.x, respawnXRange.y),
+            Random.Range(minX, maxX),
             transform.position.y,
-            Random.Range(respawnZRange.x, respawnZRange.y)
+            Random.Range(minZ, maxZ)
         );
 
         transform.position = randomPosition;
@@ -163,9 +268,13 @@ public class BoidAgent : MonoBehaviour
 
     private void OnValidate()
     {
-        separationRadius = Mathf.Min(separationRadius, perceptionRadius);
+        separationRadius = Mathf.Min(
+            separationRadius,
+            perceptionRadius
+        );
 
         maxSpeed = Mathf.Max(0f, maxSpeed);
         maxAcceleration = Mathf.Max(0f, maxAcceleration);
+        boundaryPadding = Mathf.Max(0f, boundaryPadding);
     }
 }

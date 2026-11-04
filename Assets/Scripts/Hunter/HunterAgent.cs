@@ -36,10 +36,14 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float interestSpawnRadius = 10f;
 
     [Header("Interest Object Spawn Bounds")]
-    [SerializeField] private Vector2 arenaXBounds = new Vector2(-24f, 24f);
-    [SerializeField] private Vector2 arenaZBounds = new Vector2(-24f, 24f);
+    [SerializeField] private Renderer huntingGroundRenderer;
+    [SerializeField] private Transform obstaclesRoot;
     [SerializeField] private float interestSpawnHeight = 1f;
+    [SerializeField] private float spawnBoundsPadding = 1f;
+    [SerializeField] private float spawnObstacleClearance = 1f;
     [SerializeField] private int maxSpawnAttempts = 10;
+
+    private Collider[] obstacleColliders;
 
     private StateMachine stateMachine;
     private float attackCooldownTimer;
@@ -100,6 +104,8 @@ public class HunterAgent : MonoBehaviour
         GatherState = new GatherState(this);
 
         attackCooldownTimer = tba;
+
+        CacheObstacleColliders();
     }
 
     private void Start()
@@ -138,7 +144,10 @@ public class HunterAgent : MonoBehaviour
 
         currentVelocity += steering * Time.deltaTime;
 
-        currentVelocity = Vector3.ClampMagnitude(currentVelocity, maxSpeed);
+        currentVelocity = Vector3.ClampMagnitude(
+            currentVelocity,
+            maxSpeed
+        );
 
         transform.position += currentVelocity * Time.deltaTime;
 
@@ -175,21 +184,74 @@ public class HunterAgent : MonoBehaviour
         ).Length;
     }
 
+    private void CacheObstacleColliders()
+    {
+        if (obstaclesRoot == null)
+        {
+            Debug.LogError(
+                $"{name}: Obstacles Root is not assigned.",
+                this
+            );
+
+            return;
+        }
+
+        obstacleColliders =
+            obstaclesRoot.GetComponentsInChildren<Collider>();
+
+        if (obstacleColliders.Length == 0)
+        {
+            Debug.LogError(
+                $"{name}: No obstacle colliders were found.",
+                this
+            );
+        }
+    }
+
     public void SpawnInterestObject()
     {
         if (interestObjectPrefab == null) return;
 
-        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        if (huntingGroundRenderer == null)
         {
-            Vector2 randomCircle = Random.insideUnitCircle * interestSpawnRadius;
-
-            Vector3 spawnPosition = new Vector3(
-                transform.position.x + randomCircle.x,
-                interestSpawnHeight,
-                transform.position.z + randomCircle.y
+            Debug.LogError(
+                $"{name}: Hunting Ground Renderer is not assigned.",
+                this
             );
 
-            if (!IsInsideArena(spawnPosition)) continue;
+            return;
+        }
+
+        if (obstacleColliders == null ||
+            obstacleColliders.Length == 0)
+        {
+            return;
+        }
+
+        Bounds bounds = huntingGroundRenderer.bounds;
+
+        Vector3 spawnCenter = bounds.center;
+
+        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        {
+            Vector2 randomCircle =
+                Random.insideUnitCircle * interestSpawnRadius;
+
+            Vector3 spawnPosition = new Vector3(
+                spawnCenter.x + randomCircle.x,
+                interestSpawnHeight,
+                spawnCenter.z + randomCircle.y
+            );
+
+            if (!IsInsideHuntingGround(spawnPosition))
+            {
+                continue;
+            }
+
+            if (!IsClearOfObstacles(spawnPosition))
+            {
+                continue;
+            }
 
             Instantiate(
                 interestObjectPrefab,
@@ -200,16 +262,64 @@ public class HunterAgent : MonoBehaviour
             return;
         }
 
-        Debug.LogWarning("Hunter could not find a valid position to spawn a InterestObject.");
+        Debug.LogWarning(
+            $"{name}: Could not find a valid position for an InterestObject.",
+            this
+        );
     }
 
-    private bool IsInsideArena(Vector3 position)
+    private bool IsInsideHuntingGround(Vector3 position)
     {
+        if (huntingGroundRenderer == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = huntingGroundRenderer.bounds;
+
+        float minX = bounds.min.x + spawnBoundsPadding;
+        float maxX = bounds.max.x - spawnBoundsPadding;
+
+        float minZ = bounds.min.z + spawnBoundsPadding;
+        float maxZ = bounds.max.z - spawnBoundsPadding;
+
+        if (minX >= maxX || minZ >= maxZ)
+        {
+            return false;
+        }
+
         return
-            position.x >= arenaXBounds.x &&
-            position.x <= arenaXBounds.y &&
-            position.z >= arenaZBounds.x &&
-            position.z <= arenaZBounds.y;
+            position.x >= minX &&
+            position.x <= maxX &&
+            position.z >= minZ &&
+            position.z <= maxZ;
+    }
+
+    private bool IsClearOfObstacles(Vector3 position)
+    {
+        float clearanceSqr =
+            spawnObstacleClearance * spawnObstacleClearance;
+
+        foreach (Collider obstacle in obstacleColliders)
+        {
+            if (obstacle == null) continue;
+            if (!obstacle.enabled) continue;
+            if (!obstacle.gameObject.activeInHierarchy) continue;
+            if (obstacle.isTrigger) continue;
+
+            Vector3 closestPoint =
+                obstacle.ClosestPoint(position);
+
+            float distanceSqr =
+                (closestPoint - position).sqrMagnitude;
+
+            if (distanceSqr <= clearanceSqr)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void UpdateAttackCooldown()
@@ -250,20 +360,39 @@ public class HunterAgent : MonoBehaviour
 
         maxSpawnAttempts = Mathf.Max(1, maxSpawnAttempts);
         interestSpawnRadius = Mathf.Max(0f, interestSpawnRadius);
+        spawnBoundsPadding = Mathf.Max(0f, spawnBoundsPadding);
+        spawnObstacleClearance = Mathf.Max(0f, spawnObstacleClearance);
 
         tba = Mathf.Max(0f, tba);
         rangeAttackRadius = Mathf.Max(0f, rangeAttackRadius);
-        meleeAttackRadius = Mathf.Clamp(meleeAttackRadius, 0f, rangeAttackRadius);
+
+        meleeAttackRadius = Mathf.Clamp(
+            meleeAttackRadius,
+            0f,
+            rangeAttackRadius
+        );
     }
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.DrawWireSphere(transform.position, perceptionRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            perceptionRadius
+        );
 
-        Gizmos.DrawWireSphere(transform.position, rangeAttackRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            rangeAttackRadius
+        );
 
-        Gizmos.DrawWireSphere(transform.position, meleeAttackRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            meleeAttackRadius
+        );
 
-        Gizmos.DrawWireSphere(transform.position, gatherRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            gatherRadius
+        );
     }
 }

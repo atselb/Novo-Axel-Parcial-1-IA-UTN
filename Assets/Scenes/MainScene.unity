@@ -243,6 +243,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (5)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: -3.9
@@ -533,6 +537,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (4)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: -5.5
@@ -590,6 +598,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (7)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: -7.8
@@ -1387,12 +1399,14 @@ MonoBehaviour:
   gatherRadius: 1.5
   gatherDuration: 2
   interestObjectPrefab: {fileID: 5185650803716884977, guid: 095b1fceaa9865c478644a5d8397afed, type: 3}
-  interestSpawnInterval: 7
-  maxActiveInterestObjects: 7
+  interestSpawnInterval: 5
+  maxActiveInterestObjects: 5
   interestSpawnRadius: 10
-  arenaXBounds: {x: -24, y: 24}
-  arenaZBounds: {x: -24, y: 24}
+  huntingGroundRenderer: {fileID: 1779400423}
+  obstaclesRoot: {fileID: 561709667}
   interestSpawnHeight: 1
+  spawnBoundsPadding: 1
+  spawnObstacleClearance: 1
   maxSpawnAttempts: 10
 --- !u!114 &475078486
 MonoBehaviour:
@@ -1497,6 +1511,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: -3.6
@@ -2089,6 +2107,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (8)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: -8.2
@@ -2780,6 +2802,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -3246,6 +3272,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (9)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: -11.9
@@ -3824,6 +3854,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (6)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: 4
@@ -4232,6 +4266,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (10)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: -10.6
@@ -4289,6 +4327,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Boid (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 469644550898942529, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+      propertyPath: huntingGroundRenderer
+      value: 
+      objectReference: {fileID: 1779400423}
     - target: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: 4
