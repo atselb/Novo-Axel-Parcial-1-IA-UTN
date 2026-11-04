@@ -20,6 +20,9 @@ public class WolfAgent : MonoBehaviour
     [SerializeField, Min(1f)] private float rotationSpeed = 270f;
     [SerializeField, Min(0.05f)] private float nodeReachDistance = 0.2f;
 
+    [Header("Capture - Parcial 2")]
+    [SerializeField, Min(0.1f)] private float captureRadius = 1.2f;
+
     [Header("Patrol - Waypoints")]
     [SerializeField] private Transform[] patrolWaypoints;
     [SerializeField, Min(0.1f)]
@@ -70,6 +73,8 @@ public class WolfAgent : MonoBehaviour
     public HunterAgent HunterTarget => hunterTarget;
 
     public bool CanSeeHunter =>
+        hunterTarget != null &&
+        !hunterTarget.IsDead &&
         perception != null &&
         perception.CanSeeHunter &&
         !IsHunterInsideSafeZone();
@@ -210,16 +215,28 @@ public class WolfAgent : MonoBehaviour
         enabled = false;
     }
 
-    // -------------------------------------------------
-    // UPDATE / PERCEPTION
-    // -------------------------------------------------
-
     private void Update()
     {
         if (!isReady) return;
 
-        // Safe zones immediately cancel every wolf's
-        // detection and pursuit of the Hunter.
+        // Dead Hunters cannot be chased or captured.
+        if (hunterTarget.IsDead)
+        {
+            if (stateMachine.CurrentState != patrolState)
+            {
+                ForgetHunter();
+                stateMachine.ChangeState(patrolState);
+            }
+            else if (hasLastKnownPosition)
+            {
+                ForgetHunter();
+            }
+
+            previouslySawHunter = false;
+            stateMachine.Update();
+            return;
+        }
+
         if (IsHunterInsideSafeZone())
         {
             if (stateMachine.CurrentState != patrolState)
@@ -239,6 +256,12 @@ public class WolfAgent : MonoBehaviour
             }
 
             previouslySawHunter = false;
+            stateMachine.Update();
+            return;
+        }
+
+        if (TryCaptureHunter())
+        {
             stateMachine.Update();
             return;
         }
@@ -283,11 +306,17 @@ public class WolfAgent : MonoBehaviour
         previouslySawHunter = seesHunter;
 
         stateMachine.Update();
+
+        // Capture can also occur after movement this frame.
+        TryCaptureHunter();
     }
 
     public void ReceiveAlert(Vector3 hunterPosition)
     {
-        if (!isReady || IsHunterInsideSafeZone())
+        if (!isReady ||
+            hunterTarget == null ||
+            hunterTarget.IsDead ||
+            IsHunterInsideSafeZone())
         {
             return;
         }
@@ -302,6 +331,102 @@ public class WolfAgent : MonoBehaviour
                 $"{name} received a pack alert."
             );
         }
+    }
+
+    private bool TryCaptureHunter()
+    {
+        if (hunterTarget == null ||
+            hunterTarget.IsDead ||
+            IsHunterInsideSafeZone())
+        {
+            return false;
+        }
+
+        Vector3 difference =
+            hunterTarget.transform.position -
+            transform.position;
+
+        difference.y = 0f;
+
+        if (difference.sqrMagnitude >=
+            captureRadius * captureRadius)
+        {
+            return false;
+        }
+
+        if (!HasCaptureLineOfSight())
+        {
+            return false;
+        }
+
+        if (!hunterTarget.TryBeCaptured(this))
+        {
+            return false;
+        }
+
+        Debug.Log(
+            $"[Wolf Capture] {name} captured Hunter " +
+            $"at {Mathf.Sqrt(difference.sqrMagnitude):0.00} " +
+            $"units (radius: {captureRadius:0.00})."
+        );
+
+        ForgetHunter();
+
+        if (stateMachine.CurrentState != patrolState)
+        {
+            stateMachine.ChangeState(patrolState);
+        }
+
+        return true;
+    }
+
+    private bool HasCaptureLineOfSight()
+    {
+        if (obstacleColliders == null)
+        {
+            return false;
+        }
+
+        Vector3 origin =
+            transform.position + Vector3.up * 0.6f;
+
+        Vector3 target =
+            hunterTarget.transform.position + Vector3.up * 0.6f;
+
+        Vector3 direction = target - origin;
+        float distance = direction.magnitude;
+
+        if (distance <= 0.001f)
+        {
+            return true;
+        }
+
+        Ray ray = new Ray(
+            origin,
+            direction / distance
+        );
+
+        foreach (Collider obstacle in obstacleColliders)
+        {
+            if (obstacle == null ||
+                !obstacle.enabled ||
+                !obstacle.gameObject.activeInHierarchy ||
+                obstacle.isTrigger)
+            {
+                continue;
+            }
+
+            if (obstacle.Raycast(
+                ray,
+                out RaycastHit hit,
+                distance
+            ))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void RememberHunter(Vector3 position)
@@ -327,10 +452,6 @@ public class WolfAgent : MonoBehaviour
                Time.time - lastAlertTime <=
                alertMemoryDuration;
     }
-
-    // -------------------------------------------------
-    // SAFE ZONES
-    // -------------------------------------------------
 
     private bool IsHunterInsideSafeZone()
     {
@@ -361,17 +482,11 @@ public class WolfAgent : MonoBehaviour
 
         Bounds bounds = zone.bounds;
 
-        // The zones are floor areas. Check X/Z;
-        // vertical height is not relevant.
         return position.x >= bounds.min.x &&
                position.x <= bounds.max.x &&
                position.z >= bounds.min.z &&
                position.z <= bounds.max.z;
     }
-
-    // -------------------------------------------------
-    // PATROL - ORDERED WAYPOINTS
-    // -------------------------------------------------
 
     private Vector3 GetPatrolDestination()
     {
@@ -427,10 +542,6 @@ public class WolfAgent : MonoBehaviour
         );
     }
 
-    // -------------------------------------------------
-    // DIRECT NAVIGATION / LINE OF SIGHT
-    // -------------------------------------------------
-
     private bool CanMoveDirectlyTo(Vector3 destination)
     {
         Vector3 origin = transform.position;
@@ -473,7 +584,7 @@ public class WolfAgent : MonoBehaviour
             }
         }
 
-        // A direct route must never cross Safe Zones.
+        // A direct patrol route cannot cross Safe Zones.
         int samples =
             Mathf.Max(1, Mathf.CeilToInt(distance / 0.5f));
 
@@ -519,10 +630,6 @@ public class WolfAgent : MonoBehaviour
             true
         );
     }
-
-    // -------------------------------------------------
-    // A* PATHFINDING
-    // -------------------------------------------------
 
     private bool CalculatePath(
         Vector3 destination,
@@ -695,10 +802,6 @@ public class WolfAgent : MonoBehaviour
         nextRepathTime = 0f;
     }
 
-    // -------------------------------------------------
-    // SEARCH AROUND LAST KNOWN POSITION
-    // -------------------------------------------------
-
     private void TryPlanSearchPath()
     {
         if (!IsAlertRemembered() ||
@@ -709,8 +812,6 @@ public class WolfAgent : MonoBehaviour
 
         nextSearchRetryTime = Time.time + 1f;
 
-        // Four search directions around the last
-        // detected position, using our navigation graph.
         for (int attempt = 0; attempt < 4; attempt++)
         {
             int index = searchPointIndex % 4;
@@ -786,10 +887,6 @@ public class WolfAgent : MonoBehaviour
         }
     }
 
-    // -------------------------------------------------
-    // VALIDATION AND GIZMOS
-    // -------------------------------------------------
-
     private void OnValidate()
     {
         moveSpeed = Mathf.Max(0.1f, moveSpeed);
@@ -806,13 +903,22 @@ public class WolfAgent : MonoBehaviour
             Mathf.Max(0.1f, alertMemoryDuration);
         alertInterval = Mathf.Max(0.1f, alertInterval);
         searchRadius = Mathf.Max(1f, searchRadius);
+        captureRadius = Mathf.Max(0.1f, captureRadius);
     }
 
     private void OnDrawGizmosSelected()
     {
-        if (!drawPath) return;
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            captureRadius
+        );
 
-        // Patrol waypoint circuit.
+        if (!drawPath)
+        {
+            return;
+        }
+
         if (patrolWaypoints != null &&
             patrolWaypoints.Length >= 2)
         {
@@ -842,7 +948,6 @@ public class WolfAgent : MonoBehaviour
             }
         }
 
-        // Last known Hunter position.
         if (hasLastKnownPosition &&
             stateMachine?.CurrentState != patrolState)
         {
@@ -854,7 +959,10 @@ public class WolfAgent : MonoBehaviour
             );
         }
 
-        if (currentPath.Count == 0) return;
+        if (currentPath.Count == 0)
+        {
+            return;
+        }
 
         Gizmos.color =
             stateMachine?.CurrentState == pursueState
@@ -879,10 +987,6 @@ public class WolfAgent : MonoBehaviour
             previous = current;
         }
     }
-
-    // -------------------------------------------------
-    // PATROL STATE
-    // -------------------------------------------------
 
     private sealed class WolfPatrolState : IState
     {
@@ -940,10 +1044,6 @@ public class WolfAgent : MonoBehaviour
         }
     }
 
-    // -------------------------------------------------
-    // PURSUE STATE
-    // -------------------------------------------------
-
     private sealed class WolfPursueState : IState
     {
         private readonly WolfAgent wolf;
@@ -970,7 +1070,6 @@ public class WolfAgent : MonoBehaviour
                 wolf.stateMachine.ChangeState(
                     wolf.patrolState
                 );
-
                 return;
             }
 
@@ -983,7 +1082,6 @@ public class WolfAgent : MonoBehaviour
                 wolf.stateMachine.ChangeState(
                     wolf.searchState
                 );
-
                 return;
             }
 
@@ -1009,10 +1107,6 @@ public class WolfAgent : MonoBehaviour
             wolf.ClearPath();
         }
     }
-
-    // -------------------------------------------------
-    // SEARCH STATE
-    // -------------------------------------------------
 
     private sealed class WolfSearchState : IState
     {
@@ -1043,7 +1137,6 @@ public class WolfAgent : MonoBehaviour
                 wolf.stateMachine.ChangeState(
                     wolf.patrolState
                 );
-
                 return;
             }
 

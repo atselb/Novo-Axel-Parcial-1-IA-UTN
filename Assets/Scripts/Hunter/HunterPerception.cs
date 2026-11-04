@@ -12,29 +12,40 @@ public class HunterPerception : MonoBehaviour
     private float detectionInterval = 0.2f;
 
     private float nextDetectionTime;
-
     private Collider[] overlapResults = new Collider[32];
 
     private readonly List<BoidAgent> perceivedAliveBoids = new();
     private readonly List<BoidAgent> perceivedEliminatedBoids = new();
 
-    public IReadOnlyList<BoidAgent> PerceivedAliveBoids => perceivedAliveBoids;
-    public IReadOnlyList<BoidAgent> PerceivedEliminatedBoids => perceivedEliminatedBoids;
+    public IReadOnlyList<BoidAgent> PerceivedAliveBoids =>
+        perceivedAliveBoids;
+
+    public IReadOnlyList<BoidAgent> PerceivedEliminatedBoids =>
+        perceivedEliminatedBoids;
 
     public bool HasAliveBoids => GetClosestAliveBoid() != null;
-    public bool HasEliminatedBoids => GetClosestEliminatedBoid() != null;
+    public bool HasEliminatedBoids =>
+        GetClosestEliminatedBoid() != null;
 
     private void OnEnable()
     {
         nextDetectionTime = Time.time;
     }
 
+    private void OnDisable()
+    {
+        perceivedAliveBoids.Clear();
+        perceivedEliminatedBoids.Clear();
+    }
+
     private void Update()
     {
-        if (Time.time < nextDetectionTime) return;
+        if (Time.time < nextDetectionTime)
+        {
+            return;
+        }
 
         nextDetectionTime = Time.time + detectionInterval;
-
         DetectBoids();
     }
 
@@ -48,15 +59,15 @@ public class HunterPerception : MonoBehaviour
         for (int i = 0; i < hitCount; i++)
         {
             Collider hit = overlapResults[i];
-
             if (hit == null) continue;
 
-            BoidAgent boid = hit.GetComponentInParent<BoidAgent>();
+            BoidAgent boid =
+                hit.GetComponentInParent<BoidAgent>();
 
-            if (boid == null) continue;
-
-            // Los Boids recolectados no son objetivos disponibles.
-            if (boid.IsCollected) continue;
+            if (boid == null || boid.IsCollected)
+            {
+                continue;
+            }
 
             if (boid.IsActive)
             {
@@ -106,13 +117,16 @@ public class HunterPerception : MonoBehaviour
 
         foreach (BoidAgent boid in perceivedAliveBoids)
         {
-            if (boid == null) continue;
-
-            // Revalidar aunque la lista todavía no se haya actualizado.
-            if (!boid.IsActive || boid.IsCollected) continue;
+            if (boid == null ||
+                !boid.IsActive ||
+                boid.IsCollected)
+            {
+                continue;
+            }
 
             float distanceSqr =
-                (boid.transform.position - transform.position).sqrMagnitude;
+                (boid.transform.position -
+                 transform.position).sqrMagnitude;
 
             if (distanceSqr < closestDistanceSqr)
             {
@@ -131,14 +145,16 @@ public class HunterPerception : MonoBehaviour
 
         foreach (BoidAgent boid in perceivedEliminatedBoids)
         {
-            if (boid == null) continue;
-
-            // Solamente se pueden recolectar Boids muertos
-            // que todavía no hayan sido recolectados.
-            if (boid.IsActive || boid.IsCollected) continue;
+            if (boid == null ||
+                boid.IsActive ||
+                boid.IsCollected)
+            {
+                continue;
+            }
 
             float distanceSqr =
-                (boid.transform.position - transform.position).sqrMagnitude;
+                (boid.transform.position -
+                 transform.position).sqrMagnitude;
 
             if (distanceSqr < closestDistanceSqr)
             {
@@ -152,6 +168,9 @@ public class HunterPerception : MonoBehaviour
 
     private void OnValidate()
     {
-        detectionInterval = Mathf.Max(0.02f, detectionInterval);
+        detectionInterval = Mathf.Max(
+            0.02f,
+            detectionInterval
+        );
     }
 }

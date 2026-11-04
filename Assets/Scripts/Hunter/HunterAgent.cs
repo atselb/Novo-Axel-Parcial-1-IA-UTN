@@ -35,6 +35,9 @@ public class HunterAgent : MonoBehaviour
     [SerializeField, Min(1)] private int requiredGathers = 3;
     [SerializeField] private Renderer exitZoneRenderer;
 
+    [Header("Capture / Respawn - Parcial 2")]
+    [SerializeField, Min(0.1f)] private float respawnTime = 5f;
+
     [Header("Gather")]
     [SerializeField] private float gatherRadius = 1.5f;
     [SerializeField] private float gatherDuration = 2f;
@@ -60,6 +63,12 @@ public class HunterAgent : MonoBehaviour
     private BoidAgent currentTarget;
     private int gatherCount;
 
+    private Renderer[] bodyRenderers;
+    private bool[] rendererInitialStates;
+    private Collider[] bodyColliders;
+    private bool[] colliderInitialStates;
+    private bool perceptionWasEnabled;
+
     public float MaxSpeed => maxSpeed;
     public Vector3 CurrentVelocity => currentVelocity;
 
@@ -73,7 +82,6 @@ public class HunterAgent : MonoBehaviour
     public float TBA => tba;
     public float RangeAttackRadius => rangeAttackRadius;
     public float MeleeAttackRadius => meleeAttackRadius;
-
     public float MeleeDamage => meleeDamage;
     public float RangeDamage => rangeDamage;
 
@@ -99,16 +107,18 @@ public class HunterAgent : MonoBehaviour
     public int GatherCount => gatherCount;
     public bool HasRequiredGathers => gatherCount >= requiredGathers;
     public Renderer ExitZoneRenderer => exitZoneRenderer;
+    public float RespawnTime => respawnTime;
+    public bool IsDead => DeadState != null && CurrentState == DeadState;
 
     public SearchState SearchState { get; private set; }
     public AttackState AttackState { get; private set; }
     public GatherState GatherState { get; private set; }
     public ExitState ExitState { get; private set; }
+    public DeadState DeadState { get; private set; }
 
     public HunterFleeContext FleeContext { get; private set; }
     public FleeState FleeState { get; private set; }
 
-    // Compatibilidad con los scripts anteriores.
     public HunterState PatrolState => SearchState;
 
     public string CurrentStateName =>
@@ -129,6 +139,7 @@ public class HunterAgent : MonoBehaviour
         AttackState = new AttackState(this);
         GatherState = new GatherState(this);
         ExitState = new ExitState(this);
+        DeadState = new DeadState(this);
 
         FleeContext = GetComponent<HunterFleeContext>();
         FleeState = new FleeState(
@@ -141,6 +152,7 @@ public class HunterAgent : MonoBehaviour
         gatherCount = 0;
 
         CacheObstacleColliders();
+        CacheHunterPresentation();
     }
 
     private void Start()
@@ -178,7 +190,6 @@ public class HunterAgent : MonoBehaviour
             startZoneRenderer.bounds.center;
 
         startPosition.y = transform.position.y;
-
         transform.position = startPosition;
 
         StopMovement();
@@ -194,14 +205,139 @@ public class HunterAgent : MonoBehaviour
     public void ChangeState(HunterState newState)
     {
         if (newState == null) return;
+
+        // Dead has absolute priority.
+        if (IsDead && newState != DeadState)
+        {
+            return;
+        }
+
         stateMachine?.ChangeState(newState);
     }
 
-    // Invocado desde los estados de la FSM.
-    // Flee tiene prioridad sobre Search, Attack y Gather.
+    public bool TryBeCaptured(WolfAgent wolf)
+    {
+        if (wolf == null ||
+            !isActiveAndEnabled ||
+            CurrentState == null ||
+            IsDead ||
+            DeadState == null ||
+            (FleeContext != null &&
+             FleeContext.IsInsideSafeZone(transform.position)))
+        {
+            return false;
+        }
+
+        Debug.Log(
+            $"[Hunter Dead] Captured by {wolf.name}. " +
+            $"Respawning in {respawnTime:0.0}s."
+        );
+
+        ChangeState(DeadState);
+        return true;
+    }
+
+    public void CompleteDeathRespawn()
+    {
+        if (!IsDead || startZoneRenderer == null)
+        {
+            return;
+        }
+
+        StopMovement();
+        ClearTarget();
+
+        gatherCount = 0;
+        attackCooldownTimer = tba;
+
+        Vector3 startPosition =
+            startZoneRenderer.bounds.center;
+
+        startPosition.y = transform.position.y;
+        transform.position = startPosition;
+
+        // The only transition allowed out of Dead.
+        stateMachine.ChangeState(SearchState);
+
+        Debug.Log(
+            "[Hunter Dead] Respawned at Zone_Start. " +
+            "Gathers: 0. State: Search."
+        );
+    }
+
+    private void CacheHunterPresentation()
+    {
+        bodyRenderers =
+            GetComponentsInChildren<Renderer>(true);
+
+        rendererInitialStates =
+            new bool[bodyRenderers.Length];
+
+        for (int i = 0; i < bodyRenderers.Length; i++)
+        {
+            rendererInitialStates[i] =
+                bodyRenderers[i].enabled;
+        }
+
+        bodyColliders =
+            GetComponentsInChildren<Collider>(true);
+
+        colliderInitialStates =
+            new bool[bodyColliders.Length];
+
+        for (int i = 0; i < bodyColliders.Length; i++)
+        {
+            colliderInitialStates[i] =
+                bodyColliders[i].enabled;
+        }
+    }
+
+    // Keep the GameObject active so DeadState.Update()
+    // can count the respawn time.
+    public void SetDeathPresentation(bool visible)
+    {
+        if (bodyRenderers != null)
+        {
+            for (int i = 0; i < bodyRenderers.Length; i++)
+            {
+                if (bodyRenderers[i] != null)
+                {
+                    bodyRenderers[i].enabled =
+                        visible && rendererInitialStates[i];
+                }
+            }
+        }
+
+        if (bodyColliders != null)
+        {
+            for (int i = 0; i < bodyColliders.Length; i++)
+            {
+                if (bodyColliders[i] != null)
+                {
+                    bodyColliders[i].enabled =
+                        visible && colliderInitialStates[i];
+                }
+            }
+        }
+
+        if (perception != null)
+        {
+            if (!visible)
+            {
+                perceptionWasEnabled = perception.enabled;
+                perception.enabled = false;
+            }
+            else
+            {
+                perception.enabled = perceptionWasEnabled;
+            }
+        }
+    }
+
     public bool TryEnterFlee()
     {
-        if (CurrentState == FleeState ||
+        if (IsDead ||
+            CurrentState == FleeState ||
             FleeContext == null ||
             !FleeContext.CanSeeWolf())
         {
@@ -218,35 +354,50 @@ public class HunterAgent : MonoBehaviour
     public void RegisterSuccessfulGather()
     {
         gatherCount++;
-        Debug.Log($"[Hunter Objective] {gatherCount}/{requiredGathers} Boids collected.");
+
+        Debug.Log(
+            $"[Hunter Objective] {gatherCount}/" +
+            $"{requiredGathers} Boids collected."
+        );
     }
 
     public bool IsInsideExitZone(Vector3 position)
     {
-        if (exitZoneRenderer == null) return false;
+        if (exitZoneRenderer == null)
+        {
+            return false;
+        }
 
         Bounds bounds = exitZoneRenderer.bounds;
+
         return position.x >= bounds.min.x &&
                position.x <= bounds.max.x &&
                position.z >= bounds.min.z &&
                position.z <= bounds.max.z;
     }
 
-    // Called by ExitState after reaching the Exit zone.
     public void CompleteEscapeAndRestart()
     {
-        if (CurrentState != ExitState) return;
+        if (CurrentState != ExitState)
+        {
+            return;
+        }
 
         StopMovement();
         ClearTarget();
         gatherCount = 0;
 
-        // Instant respawn at Start, restarting Search via the FSM.
-        Vector3 startPosition = startZoneRenderer.bounds.center;
+        Vector3 startPosition =
+            startZoneRenderer.bounds.center;
+
         startPosition.y = transform.position.y;
         transform.position = startPosition;
 
-        Debug.Log("[Hunter Exit] Escaped! Respawned at Start. Gathers: 0.");
+        Debug.Log(
+            "[Hunter Exit] Escaped! Respawned at Start. " +
+            "Gathers: 0."
+        );
+
         ChangeState(SearchState);
     }
 
@@ -265,7 +416,6 @@ public class HunterAgent : MonoBehaviour
                position.z <= bounds.max.z;
     }
 
-    // Movimiento por los nodos de A*.
     public void MoveAlongPath(Vector3 targetPosition)
     {
         Vector3 target = new Vector3(
@@ -298,7 +448,6 @@ public class HunterAgent : MonoBehaviour
         RotateTowardsVelocity();
     }
 
-    // Steering del Parcial 1, conservado.
     public void MoveTowards(Vector3 targetPosition)
     {
         Vector3 direction =
@@ -376,7 +525,6 @@ public class HunterAgent : MonoBehaviour
                 $"{name}: Obstacles Root is not assigned.",
                 this
             );
-
             return;
         }
 
@@ -467,17 +615,10 @@ public class HunterAgent : MonoBehaviour
 
         Bounds bounds = huntingGroundRenderer.bounds;
 
-        float minX =
-            bounds.min.x + spawnBoundsPadding;
-
-        float maxX =
-            bounds.max.x - spawnBoundsPadding;
-
-        float minZ =
-            bounds.min.z + spawnBoundsPadding;
-
-        float maxZ =
-            bounds.max.z - spawnBoundsPadding;
+        float minX = bounds.min.x + spawnBoundsPadding;
+        float maxX = bounds.max.x - spawnBoundsPadding;
+        float minZ = bounds.min.z + spawnBoundsPadding;
+        float maxZ = bounds.max.z - spawnBoundsPadding;
 
         if (minX >= maxX || minZ >= maxZ)
         {
@@ -493,8 +634,7 @@ public class HunterAgent : MonoBehaviour
     private bool IsClearOfObstacles(Vector3 position)
     {
         float clearanceSqr =
-            spawnObstacleClearance *
-            spawnObstacleClearance;
+            spawnObstacleClearance * spawnObstacleClearance;
 
         foreach (Collider obstacle in obstacleColliders)
         {
@@ -552,6 +692,8 @@ public class HunterAgent : MonoBehaviour
     private void OnValidate()
     {
         requiredGathers = Mathf.Max(1, requiredGathers);
+        respawnTime = Mathf.Max(0.1f, respawnTime);
+
         maxSpeed = Mathf.Max(0f, maxSpeed);
         maxAcceleration = Mathf.Max(0f, maxAcceleration);
         rotationSpeed = Mathf.Max(0f, rotationSpeed);
@@ -607,6 +749,7 @@ public class HunterAgent : MonoBehaviour
 
         IReadOnlyList<NavigationNode> path;
         int pathIndex;
+
         if (CurrentState == ExitState && ExitState != null)
         {
             path = ExitState.CurrentPath;
@@ -615,13 +758,20 @@ public class HunterAgent : MonoBehaviour
         }
         else
         {
-            if (SearchState == null) return;
+            if (SearchState == null)
+            {
+                return;
+            }
+
             path = SearchState.CurrentPath;
             pathIndex = SearchState.CurrentPathIndex;
             Gizmos.color = Color.cyan;
         }
 
-        if (path == null || path.Count == 0) return;
+        if (path == null || path.Count == 0)
+        {
+            return;
+        }
 
         for (int i = pathIndex;
              i < path.Count;

@@ -66,6 +66,7 @@ public class WolfPerception : MonoBehaviour
     {
         if (wolf == null ||
             wolf.HunterTarget == null ||
+            wolf.HunterTarget.IsDead ||
             obstacleColliders == null)
         {
             return false;
@@ -79,7 +80,6 @@ public class WolfPerception : MonoBehaviour
             Vector3.up * eyeHeight;
 
         Vector3 direction = target - origin;
-
         Vector3 horizontalDirection = direction;
         horizontalDirection.y = 0f;
 
@@ -124,7 +124,11 @@ public class WolfPerception : MonoBehaviour
                 continue;
             }
 
-            if (obstacle.Raycast(ray, out RaycastHit hit, distance))
+            if (obstacle.Raycast(
+                ray,
+                out RaycastHit hit,
+                distance
+            ))
             {
                 return false;
             }
@@ -137,19 +141,29 @@ public class WolfPerception : MonoBehaviour
     {
         visionRadius = Mathf.Max(0.1f, visionRadius);
         eyeHeight = Mathf.Max(0f, eyeHeight);
-        detectionInterval = Mathf.Max(0.02f, detectionInterval);
+        detectionInterval = Mathf.Max(
+            0.02f,
+            detectionInterval
+        );
     }
 
     private void OnDrawGizmosSelected()
     {
-        if (!drawVision) return;
+        if (!drawVision)
+        {
+            return;
+        }
 
-        Gizmos.color = CanSeeHunter ? Color.red : Color.cyan;
+        Gizmos.color =
+            CanSeeHunter ? Color.red : Color.cyan;
 
         Vector3 origin =
             transform.position + Vector3.up * eyeHeight;
 
-        Gizmos.DrawWireSphere(origin, visionRadius);
+        Gizmos.DrawWireSphere(
+            origin,
+            visionRadius
+        );
 
         Vector3 left = Quaternion.Euler(
             0f,
