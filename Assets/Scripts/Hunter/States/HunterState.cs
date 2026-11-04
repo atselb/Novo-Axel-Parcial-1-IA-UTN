@@ -1,5 +1,5 @@
 
-public abstract class HunterState
+public abstract class HunterState : IState
 {
     protected readonly HunterAgent hunter;
 
@@ -8,9 +8,15 @@ public abstract class HunterState
         this.hunter = hunter;
     }
 
-    public virtual void Enter() { }
+    public virtual void Enter()
+    {
+    }
 
-    public virtual void Update() { }
+    public virtual void Update()
+    {
+    }
 
-    public virtual void Exit() { }
+    public virtual void Exit()
+    {
+    }
 }

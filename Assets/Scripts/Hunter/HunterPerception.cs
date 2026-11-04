@@ -1,21 +1,51 @@
+
 using System.Collections.Generic;
 using UnityEngine;
 
 public class HunterPerception : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private HunterAgent hunter;
+
+    [Header("Detection Settings")]
+    [SerializeField, Min(0.02f)]
+    private float detectionInterval = 0.2f;
+
+    private float nextDetectionTime;
+    private Collider[] overlapResults = new Collider[32];
 
     private readonly List<BoidAgent> perceivedAliveBoids = new();
     private readonly List<BoidAgent> perceivedEliminatedBoids = new();
 
-    public IReadOnlyList<BoidAgent> PerceivedAliveBoids => perceivedAliveBoids;
-    public IReadOnlyList<BoidAgent> PerceivedEliminatedBoids => perceivedEliminatedBoids;
-    
-    public bool HasAliveBoids => perceivedAliveBoids.Count > 0;
-    public bool HasEliminatedBoids => perceivedEliminatedBoids.Count > 0;
+    public IReadOnlyList<BoidAgent> PerceivedAliveBoids =>
+        perceivedAliveBoids;
+
+    public IReadOnlyList<BoidAgent> PerceivedEliminatedBoids =>
+        perceivedEliminatedBoids;
+
+    public bool HasAliveBoids => GetClosestAliveBoid() != null;
+    public bool HasEliminatedBoids =>
+        GetClosestEliminatedBoid() != null;
+
+    private void OnEnable()
+    {
+        nextDetectionTime = Time.time;
+    }
+
+    private void OnDisable()
+    {
+        perceivedAliveBoids.Clear();
+        perceivedEliminatedBoids.Clear();
+    }
 
     private void Update()
     {
+        if (Time.time < nextDetectionTime)
+        {
+            return;
+        }
+
+        nextDetectionTime = Time.time + detectionInterval;
         DetectBoids();
     }
 
@@ -24,16 +54,20 @@ public class HunterPerception : MonoBehaviour
         perceivedAliveBoids.Clear();
         perceivedEliminatedBoids.Clear();
 
-        Collider[] hits = Physics.OverlapSphere(
-            transform.position,
-            hunter.PerceptionRadius
-        );
+        int hitCount = GetNearbyColliders();
 
-        foreach (Collider hit in hits)
+        for (int i = 0; i < hitCount; i++)
         {
-            BoidAgent boid = hit.GetComponentInParent<BoidAgent>();
+            Collider hit = overlapResults[i];
+            if (hit == null) continue;
 
-            if (boid == null) continue;
+            BoidAgent boid =
+                hit.GetComponentInParent<BoidAgent>();
+
+            if (boid == null || boid.IsCollected)
+            {
+                continue;
+            }
 
             if (boid.IsActive)
             {
@@ -52,6 +86,30 @@ public class HunterPerception : MonoBehaviour
         }
     }
 
+    private int GetNearbyColliders()
+    {
+        int hitCount;
+
+        while (true)
+        {
+            hitCount = Physics.OverlapSphereNonAlloc(
+                transform.position,
+                hunter.PerceptionRadius,
+                overlapResults
+            );
+
+            if (hitCount < overlapResults.Length)
+            {
+                return hitCount;
+            }
+
+            System.Array.Resize(
+                ref overlapResults,
+                overlapResults.Length * 2
+            );
+        }
+    }
+
     public BoidAgent GetClosestAliveBoid()
     {
         BoidAgent closest = null;
@@ -59,9 +117,16 @@ public class HunterPerception : MonoBehaviour
 
         foreach (BoidAgent boid in perceivedAliveBoids)
         {
-            if (boid == null) continue;
+            if (boid == null ||
+                !boid.IsActive ||
+                boid.IsCollected)
+            {
+                continue;
+            }
 
-            float distanceSqr = (boid.transform.position - transform.position).sqrMagnitude;
+            float distanceSqr =
+                (boid.transform.position -
+                 transform.position).sqrMagnitude;
 
             if (distanceSqr < closestDistanceSqr)
             {
@@ -80,9 +145,16 @@ public class HunterPerception : MonoBehaviour
 
         foreach (BoidAgent boid in perceivedEliminatedBoids)
         {
-            if (boid == null) continue;
+            if (boid == null ||
+                boid.IsActive ||
+                boid.IsCollected)
+            {
+                continue;
+            }
 
-            float distanceSqr = (boid.transform.position - transform.position).sqrMagnitude;
+            float distanceSqr =
+                (boid.transform.position -
+                 transform.position).sqrMagnitude;
 
             if (distanceSqr < closestDistanceSqr)
             {
@@ -92,5 +164,13 @@ public class HunterPerception : MonoBehaviour
         }
 
         return closest;
-    } 
+    }
+
+    private void OnValidate()
+    {
+        detectionInterval = Mathf.Max(
+            0.02f,
+            detectionInterval
+        );
+    }
 }

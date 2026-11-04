@@ -1,9 +1,20 @@
+
 using System.Collections.Generic;
 using UnityEngine;
 
 public class BoidPerception : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private BoidAgent agent;
+
+    [Header("Detection Settings")]
+    [SerializeField, Min(0.02f)]
+    private float detectionInterval = 0.2f;
+
+    private float nextDetectionTime;
+
+    private Collider[] overlapResults = new Collider[32];
+
     private HunterAgent perceivedHunter;
 
     private readonly List<BoidAgent> perceivedNeighbors = new();
@@ -17,11 +28,21 @@ public class BoidPerception : MonoBehaviour
     public int PerceivedCount => perceivedNeighbors.Count;
     public int SeparationCount => separationNeighbors.Count;
     public int InterestObjectCount => perceivedInterestObjects.Count;
+
     public HunterAgent PerceivedHunter => perceivedHunter;
     public bool HasHunterThreat => perceivedHunter != null;
 
+    private void OnEnable()
+    {
+        nextDetectionTime = Time.time;
+    }
+
     private void Update()
     {
+        if (Time.time < nextDetectionTime) return;
+
+        nextDetectionTime = Time.time + detectionInterval;
+
         DetectNearbyObjects();
     }
 
@@ -33,16 +54,41 @@ public class BoidPerception : MonoBehaviour
 
         perceivedHunter = null;
 
-        Collider[] hits = Physics.OverlapSphere(
-            transform.position,
-            agent.PerceptionRadius
-        );
+        int hitCount = GetNearbyColliders();
 
-        foreach (Collider hit in hits)
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider hit = overlapResults[i];
+
+            if (hit == null) continue;
+
             DetectBoid(hit);
             DetectInterestObject(hit);
             DetectHunter(hit);
+        }
+    }
+
+    private int GetNearbyColliders()
+    {
+        int hitCount;
+
+        while (true)
+        {
+            hitCount = Physics.OverlapSphereNonAlloc(
+                transform.position,
+                agent.PerceptionRadius,
+                overlapResults
+            );
+
+            if (hitCount < overlapResults.Length)
+            {
+                return hitCount;
+            }
+
+            System.Array.Resize(
+                ref overlapResults,
+                overlapResults.Length * 2
+            );
         }
     }
 
@@ -69,10 +115,10 @@ public class BoidPerception : MonoBehaviour
 
     private void DetectInterestObject(Collider hit)
     {
-        InterestObject interestObject = hit.GetComponent<InterestObject>();
+        InterestObject interestObject =
+            hit.GetComponent<InterestObject>();
 
         if (interestObject == null) return;
-
         if (interestObject.IsDestroyed) return;
 
         perceivedInterestObjects.Add(interestObject);
@@ -96,7 +142,9 @@ public class BoidPerception : MonoBehaviour
         {
             if (interestObject == null) continue;
 
-            float distance = Vector3.SqrMagnitude(interestObject.transform.position - transform.position);
+            float distance = Vector3.SqrMagnitude(
+                interestObject.transform.position - transform.position
+            );
 
             if (distance < closestDistance)
             {
@@ -108,13 +156,14 @@ public class BoidPerception : MonoBehaviour
         return closest;
     }
 
-
-
+    private void OnValidate()
+    {
+        detectionInterval = Mathf.Max(0.02f, detectionInterval);
+    }
 
     private void OnDrawGizmosSelected()
     {
-        if (agent == null)
-            return;
+        if (agent == null) return;
 
         Gizmos.DrawWireSphere(
             transform.position,
