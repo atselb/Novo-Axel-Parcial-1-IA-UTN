@@ -1,7 +1,9 @@
+
 using UnityEngine;
 
 public class GatherState : HunterState
 {
+    private HunterPathNavigator navigator;
     private float gatherTimer;
 
     public GatherState(HunterAgent hunter) : base(hunter) { }
@@ -9,6 +11,21 @@ public class GatherState : HunterState
     public override void Enter()
     {
         gatherTimer = 0f;
+
+        navigator = hunter.GetComponent<HunterPathNavigator>();
+
+        if (navigator == null)
+        {
+            Debug.LogError(
+                "Hunter Gather: HunterPathNavigator component is missing.",
+                hunter
+            );
+
+            hunter.StopMovement();
+            return;
+        }
+
+        navigator.ResetNavigation();
 
         Debug.Log("Hunter entered Gather state.");
     }
@@ -19,57 +36,80 @@ public class GatherState : HunterState
 
         if (!IsTargetAvailable(target))
         {
-            ReturnToPatrol();
+            ReturnToSearch();
             return;
         }
 
-        float distance = Vector3.Distance(hunter.transform.position, target.transform.position);
-
-        if (distance > hunter.GatherRadius)
+        if (navigator == null)
         {
-            gatherTimer = 0f;
-
-            hunter.MoveTowards(target.transform.position);
-            
+            hunter.StopMovement();
             return;
         }
 
-        hunter.StopMovement();
-        UpdateGathering(target);
-    }
+        float distance = Vector3.Distance(
+            hunter.transform.position,
+            target.transform.position
+        );
 
+        bool hasLineOfSight =
+            navigator.HasLineOfSight(target.transform.position);
 
-    public override void Exit()
-    {
-        Debug.Log("Hunter exited Gather state.");
+        if (distance <= hunter.GatherRadius && hasLineOfSight)
+        {
+            hunter.StopMovement();
+            UpdateGathering(target);
+            return;
+        }
+
+        gatherTimer = 0f;
+
+        navigator.MoveTo(
+            target.transform.position,
+            hunter.GatherRadius + 2f
+        );
     }
 
     private void UpdateGathering(BoidAgent target)
     {
         gatherTimer += Time.deltaTime;
 
-        if (gatherTimer < hunter.GatherDuration) return;
+        if (gatherTimer < hunter.GatherDuration)
+        {
+            return;
+        }
 
         target.Collect();
 
+        Debug.Log($"Hunter collected {target.name}");
+
         hunter.ClearTarget();
-        hunter.ChangeState(hunter.PatrolState);
+        hunter.ChangeState(hunter.SearchState);
     }
 
     private bool IsTargetAvailable(BoidAgent target)
     {
         if (target == null) return false;
-
         if (target.IsActive) return false;
-
         if (target.IsCollected) return false;
 
-        return true; 
+        return true;
     }
 
-    private void ReturnToPatrol()
+    private void ReturnToSearch()
     {
         hunter.ClearTarget();
-        hunter.ChangeState(hunter.PatrolState);
+        hunter.ChangeState(hunter.SearchState);
+    }
+
+    public override void Exit()
+    {
+        if (navigator != null)
+        {
+            navigator.StopNavigation();
+        }
+
+        gatherTimer = 0f;
+
+        Debug.Log("Hunter exited Gather state.");
     }
 }

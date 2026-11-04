@@ -21,8 +21,8 @@ public class HunterPerception : MonoBehaviour
     public IReadOnlyList<BoidAgent> PerceivedAliveBoids => perceivedAliveBoids;
     public IReadOnlyList<BoidAgent> PerceivedEliminatedBoids => perceivedEliminatedBoids;
 
-    public bool HasAliveBoids => perceivedAliveBoids.Count > 0;
-    public bool HasEliminatedBoids => perceivedEliminatedBoids.Count > 0;
+    public bool HasAliveBoids => GetClosestAliveBoid() != null;
+    public bool HasEliminatedBoids => GetClosestEliminatedBoid() != null;
 
     private void OnEnable()
     {
@@ -54,6 +54,9 @@ public class HunterPerception : MonoBehaviour
             BoidAgent boid = hit.GetComponentInParent<BoidAgent>();
 
             if (boid == null) continue;
+
+            // Los Boids recolectados no son objetivos disponibles.
+            if (boid.IsCollected) continue;
 
             if (boid.IsActive)
             {
@@ -105,6 +108,9 @@ public class HunterPerception : MonoBehaviour
         {
             if (boid == null) continue;
 
+            // Revalidar aunque la lista todavía no se haya actualizado.
+            if (!boid.IsActive || boid.IsCollected) continue;
+
             float distanceSqr =
                 (boid.transform.position - transform.position).sqrMagnitude;
 
@@ -126,6 +132,10 @@ public class HunterPerception : MonoBehaviour
         foreach (BoidAgent boid in perceivedEliminatedBoids)
         {
             if (boid == null) continue;
+
+            // Solamente se pueden recolectar Boids muertos
+            // que todavía no hayan sido recolectados.
+            if (boid.IsActive || boid.IsCollected) continue;
 
             float distanceSqr =
                 (boid.transform.position - transform.position).sqrMagnitude;

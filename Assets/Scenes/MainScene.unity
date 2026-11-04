@@ -1266,6 +1266,7 @@ GameObject:
   - component: {fileID: 475078485}
   - component: {fileID: 475078486}
   - component: {fileID: 475078487}
+  - component: {fileID: 475078488}
   m_Layer: 0
   m_Name: Hunter
   m_TagString: Untagged
@@ -1438,6 +1439,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HunterDebugDisplay
   hunter: {fileID: 475078485}
+--- !u!114 &475078488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 475078480}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b14c1412f0515742b9e38dc0f5dfb55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HunterPathNavigator
+  obstaclesRoot: {fileID: 561709667}
+  visionHeight: 0.7
+  repathInterval: 0.4
+  targetMovementThreshold: 1
+  drawPath: 1
 --- !u!4 &494902162 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
