@@ -1380,9 +1380,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8eaf2e16d56db324087bc698901e2aa3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HunterAgent
-  maxSpeed: 5
+  maxSpeed: 4
   maxAcceleration: 8
   rotationSpeed: 180
+  navigationGraph: {fileID: 655408277}
+  startZoneRenderer: {fileID: 375635423}
+  pathNodeReachDistance: 0.1
   perceptionRadius: 10
   perception: {fileID: 475078486}
   tba: 3

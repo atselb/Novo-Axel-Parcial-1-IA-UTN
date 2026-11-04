@@ -1,4 +1,4 @@
-
+using System.Collections.Generic;
 using UnityEngine;
 
 public class HunterAgent : MonoBehaviour
@@ -7,6 +7,11 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private float maxSpeed = 4f;
     [SerializeField] private float maxAcceleration = 8f;
     [SerializeField] private float rotationSpeed = 180f;
+
+    [Header("Navigation")]
+    [SerializeField] private NavigationGraph navigationGraph;
+    [SerializeField] private Renderer startZoneRenderer;
+    [SerializeField] private float pathNodeReachDistance = 0.1f;
 
     [Header("Perception")]
     [SerializeField] private float perceptionRadius = 12f;
@@ -53,6 +58,11 @@ public class HunterAgent : MonoBehaviour
 
     public float MaxSpeed => maxSpeed;
     public Vector3 CurrentVelocity => currentVelocity;
+
+    public NavigationGraph NavigationGraph => navigationGraph;
+    public Renderer HuntingGroundRenderer => huntingGroundRenderer;
+    public float PathNodeReachDistance => pathNodeReachDistance;
+
     public float PerceptionRadius => perceptionRadius;
     public HunterPerception Perception => perception;
 
@@ -81,9 +91,12 @@ public class HunterAgent : MonoBehaviour
     public float GatherRadius => gatherRadius;
     public float GatherDuration => gatherDuration;
 
-    public PatrolState PatrolState { get; private set; }
+    public SearchState SearchState { get; private set; }
     public AttackState AttackState { get; private set; }
     public GatherState GatherState { get; private set; }
+
+    // Compatibilidad temporal con los estados del Parcial 1.
+    public HunterState PatrolState => SearchState;
 
     public string CurrentStateName =>
         CurrentState != null
@@ -99,7 +112,7 @@ public class HunterAgent : MonoBehaviour
     {
         stateMachine = new StateMachine();
 
-        PatrolState = new PatrolState(this);
+        SearchState = new SearchState(this);
         AttackState = new AttackState(this);
         GatherState = new GatherState(this);
 
@@ -110,7 +123,30 @@ public class HunterAgent : MonoBehaviour
 
     private void Start()
     {
-        ChangeState(PatrolState);
+        if (navigationGraph == null ||
+            !navigationGraph.IsReady ||
+            startZoneRenderer == null ||
+            huntingGroundRenderer == null ||
+            perception == null)
+        {
+            Debug.LogError(
+                $"{name}: Missing required Hunter navigation or perception references.",
+                this
+            );
+
+            enabled = false;
+            return;
+        }
+
+        Vector3 startPosition = startZoneRenderer.bounds.center;
+
+        startPosition.y = transform.position.y;
+
+        transform.position = startPosition;
+
+        StopMovement();
+
+        ChangeState(SearchState);
     }
 
     private void Update()
@@ -123,6 +159,54 @@ public class HunterAgent : MonoBehaviour
     public void ChangeState(HunterState newState)
     {
         stateMachine?.ChangeState(newState);
+    }
+
+    public bool IsInsideHuntingGround(Vector3 position)
+    {
+        if (huntingGroundRenderer == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = huntingGroundRenderer.bounds;
+
+        return
+            position.x >= bounds.min.x &&
+            position.x <= bounds.max.x &&
+            position.z >= bounds.min.z &&
+            position.z <= bounds.max.z;
+    }
+
+    public void MoveAlongPath(Vector3 targetPosition)
+    {
+        Vector3 target = new Vector3(
+            targetPosition.x,
+            transform.position.y,
+            targetPosition.z
+        );
+
+        Vector3 previousPosition = transform.position;
+
+        Vector3 nextPosition = Vector3.MoveTowards(
+            previousPosition,
+            target,
+            maxSpeed * Time.deltaTime
+        );
+
+        transform.position = nextPosition;
+
+        if (Time.deltaTime > 0f)
+        {
+            currentVelocity =
+                (nextPosition - previousPosition) /
+                Time.deltaTime;
+        }
+        else
+        {
+            currentVelocity = Vector3.zero;
+        }
+
+        RotateTowardsVelocity();
     }
 
     public void MoveTowards(Vector3 targetPosition)
@@ -243,7 +327,7 @@ public class HunterAgent : MonoBehaviour
                 spawnCenter.z + randomCircle.y
             );
 
-            if (!IsInsideHuntingGround(spawnPosition))
+            if (!IsInsideArena(spawnPosition))
             {
                 continue;
             }
@@ -268,7 +352,7 @@ public class HunterAgent : MonoBehaviour
         );
     }
 
-    private bool IsInsideHuntingGround(Vector3 position)
+    private bool IsInsideArena(Vector3 position)
     {
         if (huntingGroundRenderer == null)
         {
@@ -356,6 +440,11 @@ public class HunterAgent : MonoBehaviour
         maxAcceleration = Mathf.Max(0f, maxAcceleration);
         rotationSpeed = Mathf.Max(0f, rotationSpeed);
 
+        pathNodeReachDistance = Mathf.Max(
+            0.05f,
+            pathNodeReachDistance
+        );
+
         perceptionRadius = Mathf.Max(0f, perceptionRadius);
 
         maxSpawnAttempts = Mathf.Max(1, maxSpawnAttempts);
@@ -375,24 +464,52 @@ public class HunterAgent : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.DrawWireSphere(
-            transform.position,
-            perceptionRadius
-        );
+        Gizmos.color = Color.white;
+        Gizmos.DrawWireSphere(transform.position, perceptionRadius);
 
-        Gizmos.DrawWireSphere(
-            transform.position,
-            rangeAttackRadius
-        );
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, rangeAttackRadius);
 
-        Gizmos.DrawWireSphere(
-            transform.position,
-            meleeAttackRadius
-        );
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, meleeAttackRadius);
 
-        Gizmos.DrawWireSphere(
-            transform.position,
-            gatherRadius
-        );
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(transform.position, gatherRadius);
+
+        if (SearchState == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<NavigationNode> path =
+            SearchState.CurrentPath;
+
+        if (path == null || path.Count == 0)
+        {
+            return;
+        }
+
+        Gizmos.color = Color.cyan;
+
+        for (int i = SearchState.CurrentPathIndex;
+             i < path.Count;
+             i++)
+        {
+            Vector3 position =
+                path[i].Position + Vector3.up * 0.5f;
+
+            Gizmos.DrawSphere(position, 0.2f);
+
+            if (i > SearchState.CurrentPathIndex)
+            {
+                Vector3 previousPosition =
+                    path[i - 1].Position + Vector3.up * 0.5f;
+
+                Gizmos.DrawLine(
+                    previousPosition,
+                    position
+                );
+            }
+        }
     }
 }
