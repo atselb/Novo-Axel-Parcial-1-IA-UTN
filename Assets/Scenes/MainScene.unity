@@ -1560,6 +1560,79 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
+--- !u!1 &655408275
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 655408278}
+  - component: {fileID: 655408277}
+  - component: {fileID: 655408276}
+  m_Layer: 0
+  m_Name: NavigationSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &655408276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 655408275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b03dfa08e1c526045966ce24f607e0d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NavigationPathTester
+  graph: {fileID: 655408277}
+  startZone: {fileID: 375635422}
+  huntingGround: {fileID: 1779400422}
+  safeZone01: {fileID: 1878182484}
+  safeZone02: {fileID: 159101221}
+  exitZone: {fileID: 928606518}
+  displayedRoute: 0
+  showScreenFeedback: 1
+--- !u!114 &655408277
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 655408275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c11eb56ec2de32d4b9a733391a2e7dc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NavigationGraph
+  floorRenderer: {fileID: 1674800698}
+  obstaclesRoot: {fileID: 561709667}
+  safeZone01: {fileID: 1878182485}
+  safeZone02: {fileID: 159101222}
+  cellSize: 2
+  floorMargin: 1.5
+  agentClearance: 0.7
+  drawGrid: 1
+--- !u!4 &655408278
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 655408275}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &684106328
 GameObject:
   m_ObjectHideFlags: 0
@@ -4619,3 +4692,4 @@ SceneRoots:
   - {fileID: 684106329}
   - {fileID: 301812951}
   - {fileID: 1904419358}
+  - {fileID: 655408278}
