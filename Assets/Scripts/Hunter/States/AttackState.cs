@@ -9,12 +9,14 @@ public class AttackState : HunterState
 
     public override void Enter()
     {
-        navigator = hunter.GetComponent<HunterPathNavigator>();
+        navigator =
+            hunter.GetComponent<HunterPathNavigator>();
 
         if (navigator == null)
         {
             Debug.LogError(
-                "Hunter Attack: HunterPathNavigator component is missing.",
+                "Hunter Attack: HunterPathNavigator " +
+                "component is missing.",
                 hunter
             );
 
@@ -29,6 +31,12 @@ public class AttackState : HunterState
 
     public override void Update()
     {
+        // Detecting a wolf interrupts the attack.
+        if (hunter.TryEnterFlee())
+        {
+            return;
+        }
+
         BoidAgent target = hunter.CurrentTarget;
 
         if (target == null || !target.IsActive)
@@ -55,7 +63,9 @@ public class AttackState : HunterState
         );
 
         bool hasLineOfSight =
-            navigator.HasLineOfSight(target.transform.position);
+            navigator.HasLineOfSight(
+                target.transform.position
+            );
 
         if (distance <= hunter.MeleeAttackRadius &&
             hasLineOfSight)

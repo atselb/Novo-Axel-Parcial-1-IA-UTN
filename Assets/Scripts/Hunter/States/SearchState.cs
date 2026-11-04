@@ -24,9 +24,10 @@ public class SearchState : HunterState
         currentPath.Clear();
         currentPathIndex = 0;
 
-        reachedHuntingGround = hunter.IsInsideHuntingGround(
-            hunter.transform.position
-        );
+        reachedHuntingGround =
+            hunter.IsInsideHuntingGround(
+                hunter.transform.position
+            );
 
         if (reachedHuntingGround)
         {
@@ -42,6 +43,12 @@ public class SearchState : HunterState
 
     public override void Update()
     {
+        // Flee has priority over every Search action.
+        if (hunter.TryEnterFlee())
+        {
+            return;
+        }
+
         if (hunter.NavigationGraph == null ||
             !hunter.NavigationGraph.IsReady)
         {
@@ -57,9 +64,17 @@ public class SearchState : HunterState
 
         if (reachedHuntingGround)
         {
-            if (TryEnterGather()) return;
+            // Preserve Parcial 1 priorities:
+            // Gather before Attack.
+            if (TryEnterGather())
+            {
+                return;
+            }
 
-            if (TryEnterAttack()) return;
+            if (TryEnterAttack())
+            {
+                return;
+            }
 
             UpdateInterestObjectSpawn();
         }
@@ -116,7 +131,6 @@ public class SearchState : HunterState
         }
 
         hunter.StopMovement();
-
         currentPath.Clear();
         currentPathIndex = 0;
     }
@@ -146,7 +160,6 @@ public class SearchState : HunterState
 
         currentPath.Clear();
         currentPath.AddRange(calculatedPath);
-
         currentPathIndex = 0;
 
         Debug.Log(
@@ -159,13 +172,13 @@ public class SearchState : HunterState
 
     private bool TryCreateSearchPath()
     {
-        Bounds bounds = hunter.HuntingGroundRenderer.bounds;
+        Bounds bounds =
+            hunter.HuntingGroundRenderer.bounds;
 
         const float margin = 1.5f;
 
         float minX = bounds.min.x + margin;
         float maxX = bounds.max.x - margin;
-
         float minZ = bounds.min.z + margin;
         float maxZ = bounds.max.z - margin;
 
@@ -219,7 +232,8 @@ public class SearchState : HunterState
         }
 
         Debug.LogWarning(
-            "Hunter Search: No reachable hunting ground node found."
+            "Hunter Search: No reachable hunting " +
+            "ground node found."
         );
 
         return false;
@@ -276,7 +290,8 @@ public class SearchState : HunterState
     {
         interestSpawnTimer += Time.deltaTime;
 
-        if (interestSpawnTimer < hunter.InterestSpawnInterval)
+        if (interestSpawnTimer <
+            hunter.InterestSpawnInterval)
         {
             return;
         }

@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -30,6 +31,10 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private Transform[] waypoints;
     [SerializeField] private float waypointReachDistance = 0.5f;
 
+    [Header("Objective - Parcial 2")]
+    [SerializeField, Min(1)] private int requiredGathers = 3;
+    [SerializeField] private Renderer exitZoneRenderer;
+
     [Header("Gather")]
     [SerializeField] private float gatherRadius = 1.5f;
     [SerializeField] private float gatherDuration = 2f;
@@ -49,12 +54,11 @@ public class HunterAgent : MonoBehaviour
     [SerializeField] private int maxSpawnAttempts = 10;
 
     private Collider[] obstacleColliders;
-
     private StateMachine stateMachine;
     private float attackCooldownTimer;
-
     private Vector3 currentVelocity;
     private BoidAgent currentTarget;
+    private int gatherCount;
 
     public float MaxSpeed => maxSpeed;
     public Vector3 CurrentVelocity => currentVelocity;
@@ -91,11 +95,20 @@ public class HunterAgent : MonoBehaviour
     public float GatherRadius => gatherRadius;
     public float GatherDuration => gatherDuration;
 
+    public int RequiredGathers => requiredGathers;
+    public int GatherCount => gatherCount;
+    public bool HasRequiredGathers => gatherCount >= requiredGathers;
+    public Renderer ExitZoneRenderer => exitZoneRenderer;
+
     public SearchState SearchState { get; private set; }
     public AttackState AttackState { get; private set; }
     public GatherState GatherState { get; private set; }
+    public ExitState ExitState { get; private set; }
 
-    // Compatibilidad temporal con los estados del Parcial 1.
+    public HunterFleeContext FleeContext { get; private set; }
+    public FleeState FleeState { get; private set; }
+
+    // Compatibilidad con los scripts anteriores.
     public HunterState PatrolState => SearchState;
 
     public string CurrentStateName =>
@@ -115,8 +128,17 @@ public class HunterAgent : MonoBehaviour
         SearchState = new SearchState(this);
         AttackState = new AttackState(this);
         GatherState = new GatherState(this);
+        ExitState = new ExitState(this);
+
+        FleeContext = GetComponent<HunterFleeContext>();
+        FleeState = new FleeState(
+            this,
+            SearchState,
+            FleeContext
+        );
 
         attackCooldownTimer = tba;
+        gatherCount = 0;
 
         CacheObstacleColliders();
     }
@@ -127,10 +149,12 @@ public class HunterAgent : MonoBehaviour
             !navigationGraph.IsReady ||
             startZoneRenderer == null ||
             huntingGroundRenderer == null ||
+            exitZoneRenderer == null ||
             perception == null)
         {
             Debug.LogError(
-                $"{name}: Missing required Hunter navigation or perception references.",
+                $"{name}: Missing Hunter navigation or " +
+                "perception references.",
                 this
             );
 
@@ -138,27 +162,92 @@ public class HunterAgent : MonoBehaviour
             return;
         }
 
-        Vector3 startPosition = startZoneRenderer.bounds.center;
+        if (FleeContext == null || !FleeContext.IsReady)
+        {
+            Debug.LogError(
+                $"{name}: HunterFleeContext is missing " +
+                "or has unassigned references.",
+                this
+            );
+
+            enabled = false;
+            return;
+        }
+
+        Vector3 startPosition =
+            startZoneRenderer.bounds.center;
 
         startPosition.y = transform.position.y;
 
         transform.position = startPosition;
 
         StopMovement();
-
         ChangeState(SearchState);
     }
 
     private void Update()
     {
         UpdateAttackCooldown();
-
         stateMachine?.Update();
     }
 
     public void ChangeState(HunterState newState)
     {
+        if (newState == null) return;
         stateMachine?.ChangeState(newState);
+    }
+
+    // Invocado desde los estados de la FSM.
+    // Flee tiene prioridad sobre Search, Attack y Gather.
+    public bool TryEnterFlee()
+    {
+        if (CurrentState == FleeState ||
+            FleeContext == null ||
+            !FleeContext.CanSeeWolf())
+        {
+            return false;
+        }
+
+        StopMovement();
+        ClearTarget();
+        ChangeState(FleeState);
+
+        return true;
+    }
+
+    public void RegisterSuccessfulGather()
+    {
+        gatherCount++;
+        Debug.Log($"[Hunter Objective] {gatherCount}/{requiredGathers} Boids collected.");
+    }
+
+    public bool IsInsideExitZone(Vector3 position)
+    {
+        if (exitZoneRenderer == null) return false;
+
+        Bounds bounds = exitZoneRenderer.bounds;
+        return position.x >= bounds.min.x &&
+               position.x <= bounds.max.x &&
+               position.z >= bounds.min.z &&
+               position.z <= bounds.max.z;
+    }
+
+    // Called by ExitState after reaching the Exit zone.
+    public void CompleteEscapeAndRestart()
+    {
+        if (CurrentState != ExitState) return;
+
+        StopMovement();
+        ClearTarget();
+        gatherCount = 0;
+
+        // Instant respawn at Start, restarting Search via the FSM.
+        Vector3 startPosition = startZoneRenderer.bounds.center;
+        startPosition.y = transform.position.y;
+        transform.position = startPosition;
+
+        Debug.Log("[Hunter Exit] Escaped! Respawned at Start. Gathers: 0.");
+        ChangeState(SearchState);
     }
 
     public bool IsInsideHuntingGround(Vector3 position)
@@ -170,13 +259,13 @@ public class HunterAgent : MonoBehaviour
 
         Bounds bounds = huntingGroundRenderer.bounds;
 
-        return
-            position.x >= bounds.min.x &&
-            position.x <= bounds.max.x &&
-            position.z >= bounds.min.z &&
-            position.z <= bounds.max.z;
+        return position.x >= bounds.min.x &&
+               position.x <= bounds.max.x &&
+               position.z >= bounds.min.z &&
+               position.z <= bounds.max.z;
     }
 
+    // Movimiento por los nodos de A*.
     public void MoveAlongPath(Vector3 targetPosition)
     {
         Vector3 target = new Vector3(
@@ -209,17 +298,24 @@ public class HunterAgent : MonoBehaviour
         RotateTowardsVelocity();
     }
 
+    // Steering del Parcial 1, conservado.
     public void MoveTowards(Vector3 targetPosition)
     {
-        Vector3 direction = targetPosition - transform.position;
+        Vector3 direction =
+            targetPosition - transform.position;
 
         direction.y = 0f;
 
-        if (direction.sqrMagnitude <= 0.001f) return;
+        if (direction.sqrMagnitude <= 0.001f)
+        {
+            return;
+        }
 
-        Vector3 desiredVelocity = direction.normalized * maxSpeed;
+        Vector3 desiredVelocity =
+            direction.normalized * maxSpeed;
 
-        Vector3 steering = desiredVelocity - currentVelocity;
+        Vector3 steering =
+            desiredVelocity - currentVelocity;
 
         steering = Vector3.ClampMagnitude(
             steering,
@@ -233,14 +329,18 @@ public class HunterAgent : MonoBehaviour
             maxSpeed
         );
 
-        transform.position += currentVelocity * Time.deltaTime;
+        transform.position +=
+            currentVelocity * Time.deltaTime;
 
         RotateTowardsVelocity();
     }
 
     private void RotateTowardsVelocity()
     {
-        if (currentVelocity.sqrMagnitude <= 0.001f) return;
+        if (currentVelocity.sqrMagnitude <= 0.001f)
+        {
+            return;
+        }
 
         Quaternion targetRotation =
             Quaternion.LookRotation(
@@ -286,7 +386,7 @@ public class HunterAgent : MonoBehaviour
         if (obstacleColliders.Length == 0)
         {
             Debug.LogError(
-                $"{name}: No obstacle colliders were found.",
+                $"{name}: No obstacle colliders found.",
                 this
             );
         }
@@ -294,15 +394,18 @@ public class HunterAgent : MonoBehaviour
 
     public void SpawnInterestObject()
     {
-        if (interestObjectPrefab == null) return;
+        if (interestObjectPrefab == null)
+        {
+            return;
+        }
 
         if (huntingGroundRenderer == null)
         {
             Debug.LogError(
-                $"{name}: Hunting Ground Renderer is not assigned.",
+                $"{name}: Hunting Ground Renderer " +
+                "is not assigned.",
                 this
             );
-
             return;
         }
 
@@ -313,13 +416,15 @@ public class HunterAgent : MonoBehaviour
         }
 
         Bounds bounds = huntingGroundRenderer.bounds;
-
         Vector3 spawnCenter = bounds.center;
 
-        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        for (int attempt = 0;
+             attempt < maxSpawnAttempts;
+             attempt++)
         {
             Vector2 randomCircle =
-                Random.insideUnitCircle * interestSpawnRadius;
+                Random.insideUnitCircle *
+                interestSpawnRadius;
 
             Vector3 spawnPosition = new Vector3(
                 spawnCenter.x + randomCircle.x,
@@ -347,7 +452,8 @@ public class HunterAgent : MonoBehaviour
         }
 
         Debug.LogWarning(
-            $"{name}: Could not find a valid position for an InterestObject.",
+            $"{name}: Could not find a valid position " +
+            "for an InterestObject.",
             this
         );
     }
@@ -361,35 +467,44 @@ public class HunterAgent : MonoBehaviour
 
         Bounds bounds = huntingGroundRenderer.bounds;
 
-        float minX = bounds.min.x + spawnBoundsPadding;
-        float maxX = bounds.max.x - spawnBoundsPadding;
+        float minX =
+            bounds.min.x + spawnBoundsPadding;
 
-        float minZ = bounds.min.z + spawnBoundsPadding;
-        float maxZ = bounds.max.z - spawnBoundsPadding;
+        float maxX =
+            bounds.max.x - spawnBoundsPadding;
+
+        float minZ =
+            bounds.min.z + spawnBoundsPadding;
+
+        float maxZ =
+            bounds.max.z - spawnBoundsPadding;
 
         if (minX >= maxX || minZ >= maxZ)
         {
             return false;
         }
 
-        return
-            position.x >= minX &&
-            position.x <= maxX &&
-            position.z >= minZ &&
-            position.z <= maxZ;
+        return position.x >= minX &&
+               position.x <= maxX &&
+               position.z >= minZ &&
+               position.z <= maxZ;
     }
 
     private bool IsClearOfObstacles(Vector3 position)
     {
         float clearanceSqr =
-            spawnObstacleClearance * spawnObstacleClearance;
+            spawnObstacleClearance *
+            spawnObstacleClearance;
 
         foreach (Collider obstacle in obstacleColliders)
         {
-            if (obstacle == null) continue;
-            if (!obstacle.enabled) continue;
-            if (!obstacle.gameObject.activeInHierarchy) continue;
-            if (obstacle.isTrigger) continue;
+            if (obstacle == null ||
+                !obstacle.enabled ||
+                !obstacle.gameObject.activeInHierarchy ||
+                obstacle.isTrigger)
+            {
+                continue;
+            }
 
             Vector3 closestPoint =
                 obstacle.ClosestPoint(position);
@@ -436,6 +551,7 @@ public class HunterAgent : MonoBehaviour
 
     private void OnValidate()
     {
+        requiredGathers = Mathf.Max(1, requiredGathers);
         maxSpeed = Mathf.Max(0f, maxSpeed);
         maxAcceleration = Mathf.Max(0f, maxAcceleration);
         rotationSpeed = Mathf.Max(0f, rotationSpeed);
@@ -450,7 +566,8 @@ public class HunterAgent : MonoBehaviour
         maxSpawnAttempts = Mathf.Max(1, maxSpawnAttempts);
         interestSpawnRadius = Mathf.Max(0f, interestSpawnRadius);
         spawnBoundsPadding = Mathf.Max(0f, spawnBoundsPadding);
-        spawnObstacleClearance = Mathf.Max(0f, spawnObstacleClearance);
+        spawnObstacleClearance =
+            Mathf.Max(0f, spawnObstacleClearance);
 
         tba = Mathf.Max(0f, tba);
         rangeAttackRadius = Mathf.Max(0f, rangeAttackRadius);
@@ -465,33 +582,48 @@ public class HunterAgent : MonoBehaviour
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.white;
-        Gizmos.DrawWireSphere(transform.position, perceptionRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            perceptionRadius
+        );
 
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, rangeAttackRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            rangeAttackRadius
+        );
 
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, meleeAttackRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            meleeAttackRadius
+        );
 
         Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(transform.position, gatherRadius);
+        Gizmos.DrawWireSphere(
+            transform.position,
+            gatherRadius
+        );
 
-        if (SearchState == null)
+        IReadOnlyList<NavigationNode> path;
+        int pathIndex;
+        if (CurrentState == ExitState && ExitState != null)
         {
-            return;
+            path = ExitState.CurrentPath;
+            pathIndex = ExitState.CurrentPathIndex;
+            Gizmos.color = Color.blue;
+        }
+        else
+        {
+            if (SearchState == null) return;
+            path = SearchState.CurrentPath;
+            pathIndex = SearchState.CurrentPathIndex;
+            Gizmos.color = Color.cyan;
         }
 
-        IReadOnlyList<NavigationNode> path =
-            SearchState.CurrentPath;
+        if (path == null || path.Count == 0) return;
 
-        if (path == null || path.Count == 0)
-        {
-            return;
-        }
-
-        Gizmos.color = Color.cyan;
-
-        for (int i = SearchState.CurrentPathIndex;
+        for (int i = pathIndex;
              i < path.Count;
              i++)
         {
@@ -500,7 +632,7 @@ public class HunterAgent : MonoBehaviour
 
             Gizmos.DrawSphere(position, 0.2f);
 
-            if (i > SearchState.CurrentPathIndex)
+            if (i > pathIndex)
             {
                 Vector3 previousPosition =
                     path[i - 1].Position + Vector3.up * 0.5f;
