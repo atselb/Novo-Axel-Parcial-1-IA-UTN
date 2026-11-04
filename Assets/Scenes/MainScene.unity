@@ -461,6 +461,7 @@ MonoBehaviour:
   moveSpeed: 3
   rotationSpeed: 270
   nodeReachDistance: 0.2
+  captureRadius: 1.2
   patrolWaypoints:
   - {fileID: 332409918}
   - {fileID: 1771964413}
@@ -1396,6 +1397,7 @@ MonoBehaviour:
   moveSpeed: 3
   rotationSpeed: 270
   nodeReachDistance: 0.2
+  captureRadius: 1.2
   patrolWaypoints:
   - {fileID: 1561335399}
   - {fileID: 1922997359}
@@ -1798,6 +1800,7 @@ GameObject:
   - component: {fileID: 475078487}
   - component: {fileID: 475078488}
   - component: {fileID: 475078489}
+  - component: {fileID: 475078490}
   m_Layer: 0
   m_Name: Hunter
   m_TagString: Untagged
@@ -1933,6 +1936,7 @@ MonoBehaviour:
   waypointReachDistance: 1.5
   requiredGathers: 3
   exitZoneRenderer: {fileID: 928606519}
+  respawnTime: 5
   gatherRadius: 1.5
   gatherDuration: 2
   interestObjectPrefab: {fileID: 5185650803716884977, guid: 095b1fceaa9865c478644a5d8397afed, type: 3}
@@ -2014,6 +2018,25 @@ MonoBehaviour:
   safeZoneWaitTime: 3
   obstaclesRoot: {fileID: 561709667}
   drawDetectionRadius: 1
+--- !u!114 &475078490
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 475078480}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9778d267c85a0884c8194d52adcaa4a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HunterCombatFeedback
+  maxPredictionTime: 1.5
+  drawPredictionGizmo: 1
+  rangedColor: {r: 1, g: 0.92, b: 0.1, a: 1}
+  meleeColor: {r: 1, g: 0.3, b: 0.1, a: 1}
+  traceDuration: 0.2
+  rangedWidth: 0.16
+  meleeWidth: 0.3
 --- !u!4 &494902162 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7023552915126636732, guid: 7f3d15fd6f160ea48b31dc4ed3aea9aa, type: 3}
@@ -2932,6 +2955,7 @@ MonoBehaviour:
   moveSpeed: 3
   rotationSpeed: 270
   nodeReachDistance: 0.2
+  captureRadius: 1.2
   patrolWaypoints:
   - {fileID: 107255356}
   - {fileID: 1788851006}
@@ -5658,6 +5682,7 @@ MonoBehaviour:
   moveSpeed: 3
   rotationSpeed: 270
   nodeReachDistance: 0.2
+  captureRadius: 1.2
   patrolWaypoints:
   - {fileID: 851173646}
   - {fileID: 1491786005}
